@@ -125,4 +125,7 @@
 - [x] 让侧边栏高亮跟随当前导航目标，不再只高亮项目总览
 - [x] 完成五个侧边栏菜单的点击交互验证并记录结果（导航契约测试与构建通过；登录态浏览器验证见 sidebar-navigation-validation.md，仍受 CAPTCHA 阻塞）
 
-- [x] 增加侧边栏导航契约测试，验证五个 target、active 状态、overview/workspace 锚点和 trends/versions/schedule Tabs 切换（10 个测试文件、23 个测试通过）
+- [x] 增加侧边栏导航契约测试，验证五个 target、active 状态、overview/workspace 锚点和 trends/versions/schedule Tabs 切换（已升级为 hash 驱动；10 个测试文件、23 个测试通过）
+
+- [x] 修复题材趋势库、版本档案和续写计划侧边栏点击后无法进入对应面板的问题（统一导航模块 + hash 驱动 + 受控 Tabs）
+- [x] 为三项菜单增加可验证的导航状态与面板切换测试（导航模块行为测试；10 个测试文件、24 个测试通过）
