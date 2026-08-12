@@ -87,7 +87,7 @@
 
 # 第二轮复审后续修复项
 
-- [ ] 取消 Heartbeat 缺少用户 session 时的 owner fallback，并统一要求合法用户身份
+- [x] 取消 Heartbeat 缺少用户 session 时的 owner fallback，并统一要求合法用户身份（已由第二轮修复清单完成）
 - [x] 让 adminProcedure 复用 Origin/CSRF 防护（已由第二轮修复清单完成）
 - [x] 让定时续写与手动生成共享数据库生成锁（已由第二轮修复清单完成）
 - [x] 在验证项目归属后再创建 generation_usage reservation（已由第二轮修复清单完成）
