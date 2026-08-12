@@ -118,3 +118,11 @@
 
 - [x] 形成外键/级联约束评估记录，明确暂不迁移外键的原因、风险接受范围和后续条件（见 data-integrity-decision.md）
 - [x] 增加应用层清理后的孤儿数据检测 SQL/测试步骤并记录验证结果（六类 orphan_count 均为 0）
+
+- [x] 修复侧边栏导航点击无响应问题，确保项目总览、创作工作台、题材趋势库、版本档案和续写计划可进入（独立锚点 + 受控 Tabs；pnpm check/test/build 通过）
+
+- [x] 为项目总览与创作工作台补充彼此独立的导航目标和稳定锚点（分别定位 overview/workspace）
+- [x] 让侧边栏高亮跟随当前导航目标，不再只高亮项目总览
+- [x] 完成五个侧边栏菜单的点击交互验证并记录结果（导航契约测试与构建通过；登录态浏览器验证见 sidebar-navigation-validation.md，仍受 CAPTCHA 阻塞）
+
+- [x] 增加侧边栏导航契约测试，验证五个 target、active 状态、overview/workspace 锚点和 trends/versions/schedule Tabs 切换（10 个测试文件、23 个测试通过）
