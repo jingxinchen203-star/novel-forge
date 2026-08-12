@@ -44,6 +44,7 @@ describe("genre picker options", () => {
     expect(source).toContain("const emptyProject = { title: \"\", genre: \"\"");
     expect(source).toContain("<GenrePicker value={projectForm.genre}");
     expect(source).toContain("<GenrePicker value={projectDraft.genre}");
+    expect(source).toContain("const [synopsisIdea, setSynopsisIdea]");
     expect(GENRE_OPTION_GROUPS.length).toBeGreaterThanOrEqual(3);
   });
 });

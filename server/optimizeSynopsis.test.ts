@@ -32,15 +32,24 @@ const ctx: TrpcContext = {
 describe("projects.optimizeSynopsis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.hasTrustedMutationOrigin.mockReturnValue(true);
     mocks.invokeLLM.mockResolvedValue({ choices: [{ message: { content: "一个失业厨师在听见食材心声后，卷入一场关于旧市场的秘密争夺。" } }] });
     mocks.reserveGenerationSlot.mockResolvedValue(true);
+  });
+
+  it("rejects an untrusted mutation origin before consuming quota", async () => {
+    mocks.hasTrustedMutationOrigin.mockReturnValue(false);
+    await expect(appRouter.createCaller({ ...ctx, req: { headers: { origin: "https://evil.example", host: "novel.example" } } as TrpcContext["req"] }).projects.optimizeSynopsis({ title: "跨源测试", genre: "都市", idea: "攻击者不应消耗生成额度" })).rejects.toThrow("Untrusted mutation origin");
+    expect(mocks.reserveGenerationSlot).not.toHaveBeenCalled();
+    expect(mocks.invokeLLM).not.toHaveBeenCalled();
   });
 
   it("optimizes an unsaved project from the manually entered title, genre and idea", async () => {
     const result = await appRouter.createCaller(ctx).projects.optimizeSynopsis({ title: "听见锅铲的人", genre: "都市脑洞", idea: "失业厨师能听见食材说话，发现菜市场藏着秘密" });
     expect(result).toContain("失业厨师");
     expect(mocks.invokeLLM).toHaveBeenCalledOnce();
-    expect(mocks.reserveGenerationSlot).not.toHaveBeenCalled();
+    expect(mocks.reserveGenerationSlot).toHaveBeenCalledWith(7, 0);
+    expect(mocks.releasePersistentGenerationLock).toHaveBeenCalledWith(7, 0);
   });
 
   it("validates ownership and reserves/releases a slot for a saved project", async () => {

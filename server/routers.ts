@@ -101,13 +101,15 @@ export const appRouter = router({
     optimizeSynopsis: protectedProcedure.input(z.object({ projectId: z.number().optional(), title: z.string().trim().max(180).default(""), genre: z.string().trim().max(120).default(""), idea: z.string().trim().min(1).max(TEXT_LIMITS.projectSynopsis), tone: z.string().trim().max(200).default("节奏明快、人物有记忆点、适合连载平台阅读") })).mutation(async ({ ctx, input }) => {
       const project = input.projectId ? await requireProject(ctx.user.id, input.projectId) : null;
       const projectId = project?.id;
-      if (projectId && !(await reserveGenerationSlot(ctx.user.id, projectId))) throw new Error("生成请求过于频繁或项目正在生成");
+      // projectId 0 is the user-level bucket for unsaved-project synopsis generation.
+      const generationBucketId = projectId ?? 0;
+      if (!(await reserveGenerationSlot(ctx.user.id, generationBucketId))) throw new Error("生成请求过于频繁或项目正在生成");
       try {
         return await textFromLLM([
           { role: "system", content: "你是中文网络文学责任编辑。请把作者的粗略想法改写成一段可用于小说发布页的中文简介。只输出简介正文，不要标题、解释、引号或项目符号。控制在120到220字，明确主角、初始处境、核心冲突、独特卖点与持续阅读钩子；不得凭空加入作者没有暗示的关键设定。" },
           { role: "user", content: `当前书名：${project?.title ?? input.title}\n当前题材：${project?.genre ?? input.genre}\n作者想法：${input.idea}\n期望语气：${input.tone}\n请输出优化后的小说简介。` },
         ]);
-      } finally { if (projectId) await releasePersistentGenerationLock(ctx.user.id, projectId); }
+      } finally { await releasePersistentGenerationLock(ctx.user.id, generationBucketId); }
     }),
     remove: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
