@@ -30,7 +30,7 @@ describe("Home navigation branches without a project", () => {
     (globalThis as any).window = { location: { hash: "" }, addEventListener: vi.fn(), removeEventListener: vi.fn(), setTimeout };
   });
 
-  it.each([["#trends", "题材趋势库", "公开趋势观察样本"], ["#versions", "版本档案", "请先建立或选择一部小说"], ["#schedule", "续写计划", "请先建立或选择一部小说"]] as const)("renders %s as an independent Home panel", (hash, title, marker) => {
+  it.each([["#trends", "题材趋势库", "多平台公开观察"], ["#versions", "版本档案", "请先建立或选择一部小说"], ["#schedule", "续写计划", "请先建立或选择一部小说"]] as const)("renders %s as an independent Home panel", (hash, title, marker) => {
     (globalThis as any).window.location.hash = hash;
     const html = renderToStaticMarkup(<Home />);
     expect(html).toContain(title);

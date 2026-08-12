@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const homeSource = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
 const standaloneSource = readFileSync(resolve(process.cwd(), "client/src/components/StandaloneModules.tsx"), "utf8");
 const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
-const trendSource = readFileSync(resolve(process.cwd(), "shared/fanqieTrends.ts"), "utf8");
+const trendSource = readFileSync(resolve(process.cwd(), "shared/multiPlatformTrends.ts"), "utf8");
 
 describe("feature expansion contracts", () => {
   it("renders standalone modules when no project is selected", () => {
@@ -18,9 +18,10 @@ describe("feature expansion contracts", () => {
 
   it("keeps Fanqie samples sourced and separated from user tags", () => {
     expect(trendSource).toContain("fanqienovel.com");
-    expect(trendSource).toContain("FANQIE_TREND_SAMPLES");
-    expect(homeSource).toContain("公开趋势观察样本");
-    expect(standaloneSource).toContain("用户标签热度");
+    expect(trendSource).toContain("douyin.com/search");
+    expect(trendSource).toContain("bilibili.com");
+    expect(homeSource).toContain("TrendTable");
+    expect(standaloneSource).toContain("MULTI_PLATFORM_TREND_SOURCES");
   });
 
   it("exposes server-side synopsis optimization for unsaved and saved projects", () => {

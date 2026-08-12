@@ -171,7 +171,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (id.includes("/react/") || id.includes("react-dom")) return "react-vendor";
+          if (id.includes("react-dom")) return "react-dom-vendor";
+          if (id.includes("/react/")) return "react-vendor";
           if (id.includes("@radix-ui") || id.includes("@tanstack") || id.includes("@trpc") || id.includes("lucide-react")) return "ui-vendor";
           return "vendor";
         },

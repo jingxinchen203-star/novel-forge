@@ -1,0 +1,98 @@
+import React, { useMemo, useState } from "react";
+import { ExternalLink, SlidersHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PUBLIC_TREND_OBSERVATIONS, type TrendConfidence, type TrendPlatform } from "@shared/multiPlatformTrends";
+
+export type UserTrend = { id: number; label: string; category: string; heat: number; note?: string };
+export type TrendRow = {
+  id: string;
+  platform: TrendPlatform;
+  observationType: string;
+  title: string;
+  genre: string;
+  metricLabel: string;
+  metricValue: number | null;
+  confidence: TrendConfidence | "用户";
+  collectedAt: string;
+  sourceUrl?: string;
+  note: string;
+  isUser?: boolean;
+};
+
+export type TrendFilters = { platform: "全部" | TrendPlatform; confidence: "全部" | TrendConfidence | "用户"; query: string; heatThreshold: "全部" | "80" | "60" | "40"; sortBy: "heat" | "date" };
+
+export function filterAndSortTrendRows(rows: TrendRow[], filters: TrendFilters) {
+  const normalized = filters.query.trim().toLowerCase();
+  return rows.filter(row => {
+    const matchesPlatform = filters.platform === "全部" || row.platform === filters.platform;
+    const matchesConfidence = filters.confidence === "全部" || row.confidence === filters.confidence;
+    const matchesQuery = !normalized || `${row.title} ${row.genre} ${row.note}`.toLowerCase().includes(normalized);
+    const matchesHeat = filters.heatThreshold === "全部" || (row.metricValue !== null && row.metricValue >= Number(filters.heatThreshold));
+    return matchesPlatform && matchesConfidence && matchesQuery && matchesHeat;
+  }).sort((a, b) => filters.sortBy === "date" ? b.collectedAt.localeCompare(a.collectedAt) : (b.metricValue ?? -1) - (a.metricValue ?? -1));
+}
+
+function formatMetric(value: number | null, label: string) {
+  if (value === null) return label;
+  if (value >= 10000) return `${(value / 10000).toFixed(value % 10000 ? 1 : 0)}万 ${label}`;
+  return `${value.toLocaleString()} ${label}`;
+}
+
+export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; onEdit?: (trend: UserTrend) => void; onDelete?: (trend: UserTrend) => void }) {
+  const [platform, setPlatform] = useState<"全部" | TrendPlatform>("全部");
+  const [confidence, setConfidence] = useState<"全部" | TrendConfidence | "用户">("全部");
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"heat" | "date">("heat");
+  const [heatThreshold, setHeatThreshold] = useState<"全部" | "80" | "60" | "40">("全部");
+
+  const rows = useMemo<TrendRow[]>(() => {
+    const publicRows: TrendRow[] = PUBLIC_TREND_OBSERVATIONS.map(item => ({ ...item }));
+    const userRows: TrendRow[] = trends.map(item => ({
+      id: `user-${item.id}`,
+      platform: "我的标签",
+      observationType: "用户自定义",
+      title: item.label,
+      genre: item.category,
+      metricLabel: "用户热度",
+      metricValue: item.heat,
+      confidence: "用户",
+      collectedAt: "—",
+      note: item.note || "暂无备注",
+      isUser: true,
+    }));
+    return [...publicRows, ...userRows];
+  }, [trends]);
+
+  const filtered = useMemo(() => filterAndSortTrendRows(rows, { platform, confidence, query, heatThreshold, sortBy }), [confidence, heatThreshold, platform, query, rows, sortBy]);
+
+  return <div className="space-y-4">
+    <div className="flex flex-col gap-3 border-y border-foreground/15 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[.18em] text-muted-foreground"><SlidersHorizontal className="h-4 w-4" />筛选趋势观察</div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:flex">
+        <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索题材、标题或备注" className="rounded-none lg:w-64" />
+        <Select value={platform} onValueChange={value => setPlatform(value as typeof platform)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="平台" /></SelectTrigger><SelectContent><SelectItem value="全部">全部平台</SelectItem><SelectItem value="番茄">番茄</SelectItem><SelectItem value="抖音">抖音</SelectItem><SelectItem value="B站">B站</SelectItem><SelectItem value="我的标签">我的标签</SelectItem></SelectContent></Select>
+        <Select value={confidence} onValueChange={value => setConfidence(value as typeof confidence)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="可信度" /></SelectTrigger><SelectContent><SelectItem value="全部">全部可信度</SelectItem><SelectItem value="高">高</SelectItem><SelectItem value="中">中</SelectItem><SelectItem value="低">低</SelectItem><SelectItem value="用户">用户标签</SelectItem></SelectContent></Select>
+        <Select value={heatThreshold} onValueChange={value => setHeatThreshold(value as typeof heatThreshold)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="指标阈值" /></SelectTrigger><SelectContent><SelectItem value="全部">全部指标</SelectItem><SelectItem value="80">≥ 80</SelectItem><SelectItem value="60">≥ 60</SelectItem><SelectItem value="40">≥ 40</SelectItem></SelectContent></Select>
+        <Select value={sortBy} onValueChange={value => setSortBy(value as typeof sortBy)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="排序" /></SelectTrigger><SelectContent><SelectItem value="heat">指标优先</SelectItem><SelectItem value="date">最近采集</SelectItem></SelectContent></Select>
+      </div>
+    </div>
+    <div className="overflow-x-auto border border-foreground/15">
+      <Table>
+        <TableHeader><TableRow><TableHead>平台</TableHead><TableHead>题材 / 样本</TableHead><TableHead>观察类型</TableHead><TableHead>指标</TableHead><TableHead>可信度</TableHead><TableHead>采集日期</TableHead><TableHead className="text-right">来源 / 操作</TableHead></TableRow></TableHeader>
+        <TableBody>{filtered.map(row => <TableRow key={row.id}>
+          <TableCell><Badge variant="outline" className="rounded-none whitespace-nowrap">{row.platform}</Badge></TableCell>
+          <TableCell className="min-w-[220px]"><p className="font-medium">{row.title}</p><p className="mt-1 text-xs text-muted-foreground">{row.genre}</p><p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">{row.note}</p></TableCell>
+          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.observationType}</TableCell>
+          <TableCell className="whitespace-nowrap text-xs">{formatMetric(row.metricValue, row.metricLabel)}</TableCell>
+          <TableCell><span className={`text-xs ${row.confidence === "高" ? "text-emerald-700" : row.confidence === "低" ? "text-amber-700" : "text-muted-foreground"}`}>{row.confidence}</span></TableCell>
+          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.collectedAt}</TableCell>
+          <TableCell className="text-right"><div className="flex flex-col items-end gap-2">{row.sourceUrl ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline underline-offset-4">查看 <ExternalLink className="h-3 w-3" /></a> : <span className="text-xs text-muted-foreground">本地</span>}{row.isUser && <span className="flex gap-2 text-xs"><button type="button" onClick={() => onEdit?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note })} className="underline underline-offset-4">编辑</button><button type="button" onClick={() => onDelete?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note })} className="text-destructive underline underline-offset-4">删除</button></span>}</div></TableCell>
+        </TableRow>)}{filtered.length === 0 && <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">没有符合当前筛选条件的趋势观察。</TableCell></TableRow>}</TableBody>
+      </Table>
+    </div>
+    <p className="text-xs leading-6 text-muted-foreground">当前显示 {filtered.length} 条观察。平台公开推荐和搜索结果仅作为选题参考，不代表实时全量榜单、销量结论或平台推荐保证。</p>
+  </div>;
+}

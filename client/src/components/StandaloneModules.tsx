@@ -2,10 +2,11 @@ import React from "react";
 import { BookOpen, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FANQIE_TREND_SAMPLES, FANQIE_TREND_SOURCE } from "@shared/fanqieTrends";
+import { TrendTable } from "@/components/TrendTable";
+import { MULTI_PLATFORM_TREND_SOURCES } from "@shared/multiPlatformTrends";
 
 export function StandaloneTrendPanel({ trends }: { trends: any[] }) {
-  return <Card className="rounded-none motion-rise"><CardHeader><CardTitle className="font-display text-3xl">题材趋势库</CardTitle><p className="text-sm text-muted-foreground leading-6">即使还没有小说项目，也可以先观察公开趋势样本，再决定书名和创作方向。</p></CardHeader><CardContent><div className="mb-6 border-l-2 border-accent pl-4 text-xs leading-6 text-muted-foreground"><strong className="text-foreground">公开趋势观察样本 · {FANQIE_TREND_SOURCE.collectedAt}</strong><br />{FANQIE_TREND_SOURCE.methodology} <a className="underline underline-offset-4" href={FANQIE_TREND_SOURCE.url} target="_blank" rel="noreferrer">查看番茄公开页面</a></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{FANQIE_TREND_SAMPLES.map(trend => <div key={trend.label} className="border border-accent/40 bg-accent/5 p-4"><div className="flex justify-between"><span className="font-semibold">{trend.label}</span><span className="text-[10px] uppercase tracking-[.16em] text-accent">公开样本</span></div><p className="text-xs text-muted-foreground mt-2">{trend.category} · 观察热度 {trend.heat}</p><p className="text-xs leading-6 mt-3">{trend.note}</p></div>)}{trends.map(trend => <div key={trend.id} className="border p-4"><span className="font-semibold">{trend.label}</span><p className="text-xs text-muted-foreground mt-2">{trend.category} · 用户标签热度 {trend.heat}</p><p className="text-xs leading-6 mt-3">{trend.note || "暂无备注"}</p></div>)}</div></CardContent></Card>;
+  return <Card className="rounded-none motion-rise"><CardHeader><CardTitle className="font-display text-3xl">题材趋势库</CardTitle><p className="text-sm text-muted-foreground leading-6">把公开平台的题材观察和你的自定义标签放在同一张表里，方便按平台、题材和可信度比较。</p></CardHeader><CardContent><div className="mb-6 border-l-2 border-accent pl-4 text-xs leading-6 text-muted-foreground"><strong className="text-foreground">多平台公开观察 · 采集于 2026-08-13</strong><br />番茄记录公开分类与首页观察；抖音记录公开搜索主题；B站记录公开视频搜索结果。三者均不是实时全量榜单。<div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">{MULTI_PLATFORM_TREND_SOURCES.map(source => <a key={source.platform} className="underline underline-offset-4" href={source.url} target="_blank" rel="noreferrer">查看 {source.platform} 来源</a>)}</div></div><TrendTable trends={trends} /></CardContent></Card>;
 }
 
 export function StandaloneModulePanel({ target, onCreate }: { target: string; onCreate: () => void }) {
