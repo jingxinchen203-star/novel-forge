@@ -2,6 +2,10 @@ export const NAV_TARGETS = ["overview", "workspace", "trends", "versions", "sche
 export type NavTarget = (typeof NAV_TARGETS)[number];
 export type WorkspaceTab = "outline" | "trends" | "versions" | "schedule";
 
+export function currentHash() {
+  return typeof window === "undefined" ? "" : window.location.hash;
+}
+
 export function readNavTarget(hash: string): NavTarget {
   const target = hash.replace(/^#/, "");
   return (NAV_TARGETS as readonly string[]).includes(target) ? target as NavTarget : "overview";

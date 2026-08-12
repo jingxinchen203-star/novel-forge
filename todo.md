@@ -166,3 +166,13 @@
 
 - [x] 增加双字段新建表单的真实组件渲染测试，确认粗略想法与最终简介同时可见（SynopsisFields 实际 SSR 渲染）
 - [x] 抽取并测试项目保存 payload，验证 AI 回填/人工修改后的最终简介进入 projects.create（16 个测试文件、44 个测试通过）
+
+# 第三轮审查遗留修复 TODO
+
+- [x] 修复 Home 与侧边栏对 window/document 的直接依赖，保证 SSR/测试环境安全（currentHash + document/window 防护）
+- [x] 稳定 hash 导航监听与 active 状态（移除 pathname 依赖；白名单目标与安全初始化）
+- [x] 配置前端按路由/功能拆包，降低生产 bundle 首屏体积警告（Home 懒加载 + vendor/ui/react 拆包，build warning 消除）
+- [x] 为遗留修复增加回归测试并重新运行 check、test、build（16 个测试文件、44 个测试通过）
+
+- [x] 移除侧边栏 active 状态对 pathname 的无必要依赖，避免 hash 菜单在非根路径失同步
+- [x] 补充无 hash 初始化与 active target 契约测试，明确当前单页导航行为（16 个测试文件、44 个测试通过）

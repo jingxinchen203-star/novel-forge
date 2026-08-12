@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, ChevronRight, Clock3, FileDown, FolderPlus, Loader2, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { readNavTarget, targetAnchor, targetToWorkspaceTab } from "@/lib/navigation";
+import { currentHash, readNavTarget, targetAnchor, targetToWorkspaceTab } from "@/lib/navigation";
 import { StandaloneModulePanel, StandaloneTrendPanel } from "@/components/StandaloneModules";
 import { GenrePicker } from "@/components/GenrePicker";
 import { SynopsisFields } from "@/components/SynopsisFields";
@@ -22,9 +22,9 @@ const emptyDocs = { outline: "", worldSetting: "", characters: "", conflicts: ""
 export default function Home() {
   const utils = trpc.useUtils();
   const projects = trpc.projects.list.useQuery(); const trends = trpc.trends.list.useQuery(); const notifications = trpc.notifications.list.useQuery();
-  const [selectedId, setSelectedId] = useState<number | null>(null); const [selectedNotification, setSelectedNotification] = useState<any>(null); const [projectForm, setProjectForm] = useState(emptyProject); const [synopsisIdea, setSynopsisIdea] = useState(""); const [showNew, setShowNew] = useState(false); const [navigationTarget, setNavigationTarget] = useState(() => readNavTarget(window.location.hash));
+  const [selectedId, setSelectedId] = useState<number | null>(null); const [selectedNotification, setSelectedNotification] = useState<any>(null); const [projectForm, setProjectForm] = useState(emptyProject); const [synopsisIdea, setSynopsisIdea] = useState(""); const [showNew, setShowNew] = useState(false); const [navigationTarget, setNavigationTarget] = useState(() => readNavTarget(currentHash()));
   useEffect(() => { if (!selectedId && projects.data?.[0]) setSelectedId(projects.data[0].id); }, [projects.data, selectedId]);
-  useEffect(() => { const onHashChange = () => { const target = readNavTarget(window.location.hash); setNavigationTarget(target); const anchor = targetAnchor(target); if (anchor) window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }; window.addEventListener("hashchange", onHashChange); return () => window.removeEventListener("hashchange", onHashChange); }, []);
+  useEffect(() => { if (typeof window === "undefined") return; const onHashChange = () => { const target = readNavTarget(currentHash()); setNavigationTarget(target); const anchor = targetAnchor(target); if (anchor && typeof document !== "undefined") window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }; window.addEventListener("hashchange", onHashChange); return () => window.removeEventListener("hashchange", onHashChange); }, []);
   const selected = projects.data?.find(p => p.id === selectedId) ?? null;
   const workspace = trpc.workspace.get.useQuery({ projectId: selectedId ?? 0 }, { enabled: Boolean(selectedId) });
   const create = trpc.projects.create.useMutation({ onSuccess: () => { utils.projects.list.invalidate(); setShowNew(false); setProjectForm(emptyProject); setSynopsisIdea(""); toast.success("项目已建立"); }, onError: error => toast.error(error.message) });
