@@ -8,6 +8,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb, getProject, getProjectDocs, getProjects, getChapters, getTrends, getNotifications, chapters, contentVersions, novelProjects, notifications, projectDocs, trendTags, writingSchedules } from "./db";
+import { buildOhStorySystemPrompt, OH_STORY_METHOD } from "@shared/ohStoryMethod";
 
 const projectInput = z.object({ title: z.string().min(1), genre: z.string().min(1), synopsis: z.string().default(""), targetWords: z.number().int().min(1000).max(500000) });
 
@@ -15,6 +16,14 @@ async function requireProject(userId: number, id: number) {
   const project = await getProject(userId, id);
   if (!project) throw new Error("项目不存在或无权访问");
   return project;
+}
+
+export function outlineSystemPrompt() {
+  return buildOhStorySystemPrompt("你是资深网文总编。请输出清晰、可执行的章节大纲，包含章节号、标题、核心事件、冲突升级和章末钩子。不要复述指令。", OH_STORY_METHOD.outlinePrompt);
+}
+
+export function chapterSystemPrompt() {
+  return buildOhStorySystemPrompt("你是成熟的中文网文作者。保持人物一致、叙事流畅、段落适合移动端阅读，严格围绕章节大纲推进，不要输出标题以外的解释。", OH_STORY_METHOD.prosePrompt);
 }
 
 async function textFromLLM(messages: { role: "system" | "user"; content: string }[]) {
@@ -82,11 +91,11 @@ export const appRouter = router({
     }),
     generateOutline: protectedProcedure.input(z.object({ projectId: z.number(), direction: z.string(), chapterCount: z.number().int().min(3).max(200) })).mutation(async ({ ctx, input }) => {
       const project = await requireProject(ctx.user.id, input.projectId); const docs = await getProjectDocs(ctx.user.id, input.projectId); const trends = await getTrends(ctx.user.id);
-      return textFromLLM([{ role: "system", content: "你是资深网文总编。请输出清晰、可执行的章节大纲，包含章节号、标题、核心事件、冲突升级和章末钩子。不要复述指令。" }, { role: "user", content: `书名：${project.title}\n题材：${project.genre}\n简介：${project.synopsis}\n趋势参考：${trends.map(t => t.label).join("、")}\n世界观：${docs?.worldSetting ?? "未填写"}\n人物：${docs?.characters ?? "未填写"}\n核心冲突：${docs?.conflicts ?? "未填写"}\n故事方向：${input.direction}\n请生成${input.chapterCount}章大纲。` }]);
+      return textFromLLM([{ role: "system", content: outlineSystemPrompt() }, { role: "user", content: `书名：${project.title}\n题材：${project.genre}\n简介：${project.synopsis}\n趋势参考：${trends.map(t => `${t.label}（${t.category}，热度${t.heat}）`).join("、")}\n世界观：${docs?.worldSetting ?? "未填写"}\n人物：${docs?.characters ?? "未填写"}\n核心冲突：${docs?.conflicts ?? "未填写"}\n故事方向：${input.direction}\n请生成${input.chapterCount}章大纲，并在开头先给出全书/本段的情绪主轴。` }]);
     }),
     generateChapter: protectedProcedure.input(z.object({ projectId: z.number(), chapterId: z.number().optional(), chapterNumber: z.number().int().min(1), title: z.string(), outline: z.string(), targetWords: z.number().int().min(500).max(20000), style: z.string() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用"); const project = await requireProject(ctx.user.id, input.projectId); const docs = await getProjectDocs(ctx.user.id, input.projectId);
-      const body = await textFromLLM([{ role: "system", content: "你是成熟的中文网文作者。保持人物一致、叙事流畅、段落适合移动端阅读，严格围绕章节大纲推进，不要输出标题以外的解释。" }, { role: "user", content: `项目：${project.title}\n题材：${project.genre}\n世界观：${docs?.worldSetting ?? ""}\n人物：${docs?.characters ?? ""}\n风格：${input.style}\n章节${input.chapterNumber}《${input.title}》大纲：${input.outline}\n目标字数：${input.targetWords}` }]);
+      const body = await textFromLLM([{ role: "system", content: chapterSystemPrompt() }, { role: "user", content: `项目：${project.title}\n题材：${project.genre}\n世界观：${docs?.worldSetting ?? ""}\n人物：${docs?.characters ?? ""}\n核心冲突：${docs?.conflicts ?? ""}\n风格：${input.style}\n章节${input.chapterNumber}《${input.title}》大纲：${input.outline}\n目标字数：${input.targetWords}` }]);
       if (input.chapterId) await db.update(chapters).set({ title: input.title, outline: input.outline, body, targetWords: input.targetWords, status: "draft" }).where(and(eq(chapters.id, input.chapterId), eq(chapters.userId, ctx.user.id)));
       else await db.insert(chapters).values({ projectId: input.projectId, userId: ctx.user.id, chapterNumber: input.chapterNumber, title: input.title, outline: input.outline, body, targetWords: input.targetWords, status: "draft" });
       return getChapters(ctx.user.id, input.projectId);
