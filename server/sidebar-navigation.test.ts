@@ -29,7 +29,7 @@ describe("sidebar navigation", () => {
     for (const target of ["overview", "workspace", "trends", "versions", "schedule"]) {
       expect(layoutSource).toContain(`target: "${target}"`);
     }
-    expect(layoutSource).toContain("window.location.hash = item.target");
+    expect(layoutSource).toContain("href={`#${item.target}`}");
     expect(layoutSource).toContain("activeTarget === item.target");
     expect(homeSource).toContain("readNavTarget(window.location.hash)");
     expect(homeSource).toContain("targetToWorkspaceTab");
