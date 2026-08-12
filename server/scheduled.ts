@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
+import { releasePersistentGenerationLock, reserveGenerationSlot } from "./_core/security";
 import { chapters, getDb, getProjectDocs, novelProjects, notifications, writingSchedules } from "./db";
 
 export function normalizeContent(content: unknown) {
@@ -17,6 +18,7 @@ export async function runScheduledContinuation(req: Request, res: Response) {
   const timestamp = new Date().toISOString();
   const requestId = randomUUID();
   let scheduleId: number | undefined;
+  let generationReserved = false;
   try {
     const user = await sdk.authenticateRequest(req);
     if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
@@ -43,6 +45,11 @@ export async function runScheduledContinuation(req: Request, res: Response) {
       await db.update(writingSchedules).set({ lockAt: null, lastRunAt: now, lastError: null }).where(eq(writingSchedules.id, schedule.id));
       return res.json({ ok: true, skipped: "already-generated", chapterNumber });
     }
+    if (!(await reserveGenerationSlot(project.userId, project.id))) {
+      await db.update(writingSchedules).set({ lockAt: null, lastError: `${requestId}:generation_busy_or_rate_limited` }).where(eq(writingSchedules.id, schedule.id));
+      return res.json({ ok: true, skipped: "generation-busy-or-rate-limited", requestId });
+    }
+    generationReserved = true;
     const outline = previous ? `承接第${previous.chapterNumber}章的悬念，推进主线冲突并在结尾留下新的阅读钩子。` : "建立开篇冲突，完成主角首次选择。";
     const result = await invokeLLM({ model: "gpt-5-mini", maxTokens: 6000, messages: [
       { role: "system", content: "你是中文网文作者。请直接输出章节正文，不要解释过程，保持设定一致，适合移动端阅读。" },
@@ -53,11 +60,19 @@ export async function runScheduledContinuation(req: Request, res: Response) {
     await db.insert(chapters).values({ projectId: project.id, userId: project.userId, chapterNumber, title: `第${chapterNumber}章`, outline, body, targetWords: 3000, status: "draft" });
     await db.insert(notifications).values({ userId: project.userId, projectId: project.id, title: "自动续写已完成", message: `《${project.title}》第 ${chapterNumber} 章已生成，可以进入工作台审核。` });
     await db.update(writingSchedules).set({ lockAt: null, lastRunAt: new Date(), lastError: null }).where(eq(writingSchedules.id, schedule.id));
+    await releasePersistentGenerationLock(project.userId, project.id);
+    generationReserved = false;
     res.json({ ok: true, projectId: project.id, chapterNumber, requestId });
   } catch (error) {
+    if (generationReserved && scheduleId) {
+      const db = await getDb();
+      const failedSchedule = (await db?.select().from(writingSchedules).where(eq(writingSchedules.id, scheduleId)).limit(1))?.[0];
+      if (failedSchedule) await releasePersistentGenerationLock(failedSchedule.userId, failedSchedule.projectId);
+    }
     if (scheduleId) {
       const db = await getDb();
-      await db?.update(writingSchedules).set({ lockAt: null, lastError: `${requestId}:${error instanceof Error ? error.message.slice(0, 120) : "unknown"}` }).where(eq(writingSchedules.id, scheduleId));
+      void error;
+      await db?.update(writingSchedules).set({ lockAt: null, lastError: `${requestId}:scheduled_continuation_failed` }).where(eq(writingSchedules.id, scheduleId));
     }
     res.status(500).json({ error: "scheduled_continuation_failed", requestId, timestamp });
   }

@@ -45,7 +45,7 @@ export const projectDocs = mysqlTable("project_docs", {
   conflicts: text("conflicts").notNull(),
   styleGuide: text("styleGuide").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({ projectIdx: index("project_docs_project_idx").on(table.projectId) }));
+}, (table) => ({ projectIdx: index("project_docs_project_idx").on(table.projectId), ownerProjectUnique: uniqueIndex("project_docs_owner_project_unique").on(table.userId, table.projectId) }));
 
 export const chapters = mysqlTable("chapters", {
   id: int("id").autoincrement().primaryKey(),
@@ -83,7 +83,7 @@ export const writingSchedules = mysqlTable("writing_schedules", {
   lastError: text("lastError"),
   scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({ taskIdx: index("writing_schedules_task_idx").on(table.scheduleCronTaskUid) }));
+}, (table) => ({ taskIdx: index("writing_schedules_task_idx").on(table.scheduleCronTaskUid), ownerProjectUnique: uniqueIndex("writing_schedules_owner_project_unique").on(table.userId, table.projectId) }));
 
 export const generationUsage = mysqlTable("generation_usage", {
   id: int("id").autoincrement().primaryKey(),

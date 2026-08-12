@@ -1,0 +1,2 @@
+ALTER TABLE `project_docs` ADD CONSTRAINT `project_docs_owner_project_unique` UNIQUE(`userId`,`projectId`);--> statement-breakpoint
+ALTER TABLE `writing_schedules` ADD CONSTRAINT `writing_schedules_owner_project_unique` UNIQUE(`userId`,`projectId`);

@@ -72,11 +72,12 @@ const callForge = async <T>(
     "content-type": "application/json",
     "connect-protocol-version": "1",
   };
-  // userSession is the decoded `app_session_id` cookie value (NOT the raw
-  // Cookie header). Empty string falls back to the project owner identity.
-  if (userSession) {
-    headers["x-manus-user-session"] = userSession;
+  // Heartbeat mutations must execute as the authenticated end user.
+  // Never fall back to the project owner when the session is absent.
+  if (!userSession) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Heartbeat user session required" });
   }
+  headers["x-manus-user-session"] = userSession;
 
   let response: Response;
   try {
@@ -88,7 +89,7 @@ const callForge = async <T>(
   } catch (error) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: `Heartbeat ${rpc} network error: ${String(error)}`,
+      message: "Heartbeat service unavailable",
     });
   }
 
@@ -112,9 +113,10 @@ const mapForgeError = (
   else if (status === 400 || status === 422) code = "BAD_REQUEST";
   else if (status === 409) code = "CONFLICT";
   else if (status === 429) code = "TOO_MANY_REQUESTS";
+  void detail;
   return new TRPCError({
     code,
-    message: `Heartbeat ${rpc} failed (${status})${detail ? `: ${detail}` : ""}`,
+    message: code === "TOO_MANY_REQUESTS" ? "Heartbeat service rate limited" : "Heartbeat request failed",
   });
 };
 

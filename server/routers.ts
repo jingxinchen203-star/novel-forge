@@ -10,6 +10,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, getProject, getProjectDocs, getProjects, getChapters, getTrends, getNotifications, chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, writingSchedules } from "./db";
 import { buildOhStorySystemPrompt, OH_STORY_METHOD } from "@shared/ohStoryMethod";
 import { releasePersistentGenerationLock, reserveGenerationSlot, TEXT_LIMITS } from "./_core/security";
+import { createScheduleWithCleanup } from "./scheduleLifecycle";
 
 const projectInput = z.object({ title: z.string().trim().min(1).max(180), genre: z.string().trim().min(1).max(120), synopsis: z.string().max(TEXT_LIMITS.projectSynopsis).default(""), targetWords: z.number().int().min(1000).max(500000) });
 
@@ -140,16 +141,18 @@ export const appRouter = router({
       return getProjectDocs(ctx.user.id, input.projectId);
     }),
     generateOutline: protectedProcedure.input(z.object({ projectId: z.number(), direction: z.string().min(1).max(TEXT_LIMITS.direction), chapterCount: z.number().int().min(3).max(200) })).mutation(async ({ ctx, input }) => {
+      const project = await requireProject(ctx.user.id, input.projectId);
       if (!(await reserveGenerationSlot(ctx.user.id, input.projectId))) throw new Error("生成请求过于频繁或项目正在生成");
       try {
-        const project = await requireProject(ctx.user.id, input.projectId); const docs = await getProjectDocs(ctx.user.id, input.projectId); const trends = await getTrends(ctx.user.id);
+        const docs = await getProjectDocs(ctx.user.id, input.projectId); const trends = await getTrends(ctx.user.id);
         return await textFromLLM([{ role: "system", content: outlineSystemPrompt() }, { role: "user", content: `书名：${project.title}\n题材：${project.genre}\n简介：${project.synopsis}\n趋势参考：${trends.map(t => `${t.label}（${t.category}，热度${t.heat}）`).join("、")}\n世界观：${docs?.worldSetting ?? "未填写"}\n人物：${docs?.characters ?? "未填写"}\n核心冲突：${docs?.conflicts ?? "未填写"}\n故事方向：${input.direction}\n请生成${input.chapterCount}章大纲，并在开头先给出全书/本段的情绪主轴。` }]);
       } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
     }),
     generateChapter: protectedProcedure.input(z.object({ projectId: z.number(), chapterId: z.number().optional(), chapterNumber: z.number().int().min(1), title: z.string().trim().min(1).max(180), outline: z.string().min(1).max(TEXT_LIMITS.outline), targetWords: z.number().int().min(500).max(20000), style: z.string().max(TEXT_LIMITS.style) })).mutation(async ({ ctx, input }) => {
+      const project = await requireProject(ctx.user.id, input.projectId);
       if (!(await reserveGenerationSlot(ctx.user.id, input.projectId))) throw new Error("生成请求过于频繁或项目正在生成");
       try {
-        const db = await getDb(); if (!db) throw new Error("数据库不可用"); const project = await requireProject(ctx.user.id, input.projectId); const docs = await getProjectDocs(ctx.user.id, input.projectId);
+        const db = await getDb(); if (!db) throw new Error("数据库不可用"); const docs = await getProjectDocs(ctx.user.id, input.projectId);
         const body = await textFromLLM([{ role: "system", content: chapterSystemPrompt() }, { role: "user", content: `项目：${project.title}\n题材：${project.genre}\n世界观：${docs?.worldSetting ?? ""}\n人物：${docs?.characters ?? ""}\n核心冲突：${docs?.conflicts ?? ""}\n风格：${input.style}\n章节${input.chapterNumber}《${input.title}》大纲：${input.outline}\n目标字数：${input.targetWords}` }]);
         if (input.chapterId) { await requireChapter(ctx.user.id, input.projectId, input.chapterId); await db.update(chapters).set({ title: input.title, outline: input.outline, body, targetWords: input.targetWords, status: "draft" }).where(and(eq(chapters.id, input.chapterId), eq(chapters.projectId, input.projectId), eq(chapters.userId, ctx.user.id))); }
         else await db.insert(chapters).values({ projectId: input.projectId, userId: ctx.user.id, chapterNumber: input.chapterNumber, title: input.title, outline: input.outline, body, targetWords: input.targetWords, status: "draft" });
@@ -176,9 +179,12 @@ export const appRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => { const db = await getDb(); if (!db) return []; return db.select().from(writingSchedules).where(eq(writingSchedules.userId, ctx.user.id)); }),
     create: protectedProcedure.input(z.object({ projectId: z.number(), cronExpression: z.string().regex(/^\\d+ \\d+ \\d+ \\* \\* \\*$/).max(80), timezone: z.string().trim().min(1).max(80).default("UTC") })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用"); const project = await requireProject(ctx.user.id, input.projectId); const sessionToken = getSessionToken(ctx.req);
-      const job = await createHeartbeatJob({ name: `novel-forge-${project.id}`, cron: input.cronExpression, path: "/api/scheduled/continueNovel", description: `自动续写《${project.title}》` }, sessionToken);
-      await db.insert(writingSchedules).values({ projectId: project.id, userId: ctx.user.id, cronExpression: input.cronExpression, timezone: input.timezone, scheduleCronTaskUid: job.taskUid });
-      return job;
+      return createScheduleWithCleanup({
+        sessionToken,
+        create: () => createHeartbeatJob({ name: `novel-forge-${project.id}`, cron: input.cronExpression, path: "/api/scheduled/continueNovel", description: `自动续写《${project.title}》` }, sessionToken),
+        persist: async job => { await db.insert(writingSchedules).values({ projectId: project.id, userId: ctx.user.id, cronExpression: input.cronExpression, timezone: input.timezone, scheduleCronTaskUid: job.taskUid }); },
+        remove: deleteHeartbeatJob,
+      });
     }),
     setEnabled: protectedProcedure.input(z.object({ id: z.number(), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");

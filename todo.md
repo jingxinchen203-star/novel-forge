@@ -76,3 +76,45 @@
 - [x] 补充 generation_usage 的专项测试，验证窗口计数、activeUntil 锁释放与超限行为（3 个测试通过，并断言 SQL 更新字段语义）
 - [x] 补充 auth.logout 跨源拒绝的回归测试证据
 - [x] 记录 staging 多请求/多实例并发验证边界（本轮未发布 staging；已写入 hardening-validation.md，部署后需执行真实压测）
+
+# 第二轮对抗性复审 TODO
+
+- [x] 复核上一轮 P0/P1 修复是否在所有入口生效
+- [x] 检查数据库配额锁、定时回调和项目删除的竞态/失败恢复
+- [x] 检查残余越权、输入、CSRF、错误透传、资源耗尽和敏感信息暴露风险
+- [x] 运行第二轮静态扫描、类型检查和完整测试
+- [x] 输出第二轮分级审查报告，区分已闭合、残余风险和未实测项
+
+# 第二轮复审后续修复项
+
+- [ ] 取消 Heartbeat 缺少用户 session 时的 owner fallback，并统一要求合法用户身份
+- [x] 让 adminProcedure 复用 Origin/CSRF 防护（已由第二轮修复清单完成）
+- [x] 让定时续写与手动生成共享数据库生成锁（已由第二轮修复清单完成）
+- [x] 在验证项目归属后再创建 generation_usage reservation（已由第二轮修复清单完成）
+- [x] 为 project_docs 和 writing_schedules 增加唯一约束、幂等创建或数量上限（0008 迁移已应用）
+- [x] 统一 Heartbeat 与 scheduled lastError 的错误码和脱敏策略
+- [x] 评估为核心实体增加外键/级联约束或数据库级清理保护（见 data-integrity-decision.md；本轮采用应用层事务清理与唯一约束）
+
+# 第二轮修复 TODO
+
+- [x] 禁止 Heartbeat 在缺少合法用户 session 时回退 owner 身份
+- [x] 让 adminProcedure 复用统一 Origin/CSRF 防护
+- [x] 统一定时续写与手动生成的数据库锁，避免同一项目并发生成
+- [x] 在 requireProject 成功后再创建 generation_usage reservation
+- [x] 为 project_docs 增加 userId/projectId 唯一约束（0008 迁移已应用）
+- [x] 为 writing_schedules 增加项目级唯一性或创建数量上限（0008 迁移已应用）
+- [x] 统一 Heartbeat 与 scheduled lastError 的错误码和脱敏策略
+- [x] 增加第二轮修复专项测试并运行类型检查、完整测试和生产构建（9 个测试文件、21 个测试通过；check/build 通过）
+
+- [x] 补充共享生成锁冲突测试，验证定时续写与手动生成互斥
+- [x] 补充无效/越权 projectId 测试，确认不创建 generation_usage 行
+- [x] 补充 project_docs 与 writing_schedules 唯一约束冲突测试（0008 迁移已应用，事务回滚冲突测试通过）
+- [x] 补充 schedule_create_failed 时远程 cron 清理测试
+- [x] 专项测试补齐后重新运行 pnpm check、pnpm test、pnpm build（9 个测试文件、21 个测试通过；check/build 通过）
+
+- [x] 补充 project_docs 唯一约束冲突测试，验证重复创建/并发首次保存会被拒绝（事务回滚测试通过）
+- [x] 补充 writing_schedules 唯一约束冲突测试，验证同一 userId/projectId 不能创建第二条计划（事务回滚测试通过）
+- [x] 补齐唯一约束冲突测试后重新运行 pnpm check、pnpm test、pnpm build，并更新测试统计（9 个测试文件、21 个测试通过）
+
+- [x] 形成外键/级联约束评估记录，明确暂不迁移外键的原因、风险接受范围和后续条件（见 data-integrity-decision.md）
+- [x] 增加应用层清理后的孤儿数据检测 SQL/测试步骤并记录验证结果（六类 orphan_count 均为 0）

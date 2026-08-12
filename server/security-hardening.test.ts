@@ -12,8 +12,8 @@ describe("security hardening", () => {
     expect(hasTrustedMutationOrigin(request({ host: "novel.example" }))).toBe(false);
   });
 
-  it("allows explicit bearer API callers without browser Origin", () => {
-    expect(hasTrustedMutationOrigin(request({ authorization: "Bearer test-token" }))).toBe(true);
+  it("rejects bearer-looking requests without a same-origin signal", () => {
+    expect(hasTrustedMutationOrigin(request({ authorization: "Bearer test-token" }))).toBe(false);
   });
 
   it("limits generation slots and releases project locks", () => {

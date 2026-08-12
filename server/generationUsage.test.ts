@@ -51,6 +51,14 @@ describe("persistent generation usage", () => {
     expect(dbMock.updateSet.mock.calls[0][0].windowCount.kind).toBe("sql");
   });
 
+  it("serializes manual and scheduled callers through the same reservation row", async () => {
+    const firstUpdate = dbMock.updateWhere;
+    firstUpdate.mockResolvedValueOnce([{ affectedRows: 1 }]).mockResolvedValueOnce([{ affectedRows: 0 }]);
+    expect(await reserveGenerationSlot(11, 22)).toBe(true);
+    expect(await reserveGenerationSlot(11, 22)).toBe(false);
+    expect(dbMock.update).toHaveBeenCalledTimes(2);
+  });
+
   it("releases the persistent activeUntil lock", async () => {
     await releasePersistentGenerationLock(11, 22);
     expect(dbMock.update).toHaveBeenCalledTimes(1);

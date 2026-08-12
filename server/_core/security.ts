@@ -16,8 +16,6 @@ const LOCK_MS = 2 * 60_000;
 const MAX_GENERATIONS_PER_MINUTE = 3;
 
 export function hasTrustedMutationOrigin(req: Request) {
-  const authorization = req.headers.authorization;
-  if (typeof authorization === "string" && authorization.startsWith("Bearer ")) return true;
   const origin = req.headers.origin;
   const host = req.headers.host;
   if (!origin || !host) return false;
