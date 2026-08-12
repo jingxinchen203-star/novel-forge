@@ -1,0 +1,1 @@
+ALTER TABLE `writing_schedules` ADD `lastRunAt` timestamp;

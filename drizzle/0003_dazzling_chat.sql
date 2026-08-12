@@ -1,0 +1,1 @@
+ALTER TABLE `project_docs` MODIFY COLUMN `outline` text;

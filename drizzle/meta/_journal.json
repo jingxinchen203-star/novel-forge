@@ -1,5 +1,41 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786545594225,
+      "tag": "0000_green_kabuki",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786545725516,
+      "tag": "0001_perpetual_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786546285281,
+      "tag": "0002_volatile_winter_soldier",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786546328831,
+      "tag": "0003_dazzling_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786546392801,
+      "tag": "0004_ordinary_power_man",
+      "breakpoints": true
+    }
+  ]
 }

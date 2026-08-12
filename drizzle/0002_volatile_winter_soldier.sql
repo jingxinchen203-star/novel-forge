@@ -1,0 +1,1 @@
+ALTER TABLE `project_docs` ADD `outline` text DEFAULT ('') NOT NULL;
