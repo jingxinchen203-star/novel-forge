@@ -4,7 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import { chapters, getDb, getProjectDocs, novelProjects, notifications, writingSchedules } from "./db";
 
-function normalizeContent(content: unknown) {
+export function normalizeContent(content: unknown) {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) return content.map(part => typeof part === "object" && part && "text" in part ? String((part as { text?: unknown }).text ?? "") : "").join("");
   return "";

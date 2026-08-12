@@ -62,6 +62,10 @@ export const appRouter = router({
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
       await db.insert(trendTags).values({ ...input, userId: ctx.user.id }); return getTrends(ctx.user.id);
     }),
+    update: protectedProcedure.input(z.object({ id: z.number(), label: z.string().min(1), category: z.string().min(1), heat: z.number().int().min(0).max(100), note: z.string().default("") })).mutation(async ({ ctx, input }) => {
+      const db = await getDb(); if (!db) throw new Error("数据库不可用"); const { id, ...values } = input;
+      await db.update(trendTags).set(values).where(and(eq(trendTags.id, id), eq(trendTags.userId, ctx.user.id))); return getTrends(ctx.user.id);
+    }),
     remove: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
       await db.delete(trendTags).where(and(eq(trendTags.id, input.id), eq(trendTags.userId, ctx.user.id))); return getTrends(ctx.user.id);
@@ -92,6 +96,14 @@ export const appRouter = router({
     }),
     versions: protectedProcedure.input(z.object({ projectId: z.number(), entityType: z.enum(["outline", "chapter"]), entityId: z.number() })).query(async ({ ctx, input }) => { const db = await getDb(); if (!db) return []; return db.select().from(contentVersions).where(and(eq(contentVersions.projectId, input.projectId), eq(contentVersions.userId, ctx.user.id), eq(contentVersions.entityType, input.entityType), eq(contentVersions.entityId, input.entityId))).orderBy(desc(contentVersions.createdAt)); }),
     saveVersion: protectedProcedure.input(z.object({ projectId: z.number(), entityType: z.enum(["outline", "chapter"]), entityId: z.number(), label: z.string(), content: z.string() })).mutation(async ({ ctx, input }) => { const db = await getDb(); if (!db) throw new Error("数据库不可用"); await db.insert(contentVersions).values({ ...input, userId: ctx.user.id }); return { success: true }; }),
+    rollbackVersion: protectedProcedure.input(z.object({ versionId: z.number() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb(); if (!db) throw new Error("数据库不可用");
+      const version = (await db.select().from(contentVersions).where(and(eq(contentVersions.id, input.versionId), eq(contentVersions.userId, ctx.user.id))).limit(1))[0];
+      if (!version) throw new Error("版本不存在或无权访问");
+      if (version.entityType === "outline") await db.update(projectDocs).set({ outline: version.content }).where(and(eq(projectDocs.projectId, version.projectId), eq(projectDocs.userId, ctx.user.id)));
+      else await db.update(chapters).set({ body: version.content, status: "revised" }).where(and(eq(chapters.id, version.entityId), eq(chapters.projectId, version.projectId), eq(chapters.userId, ctx.user.id)));
+      return { success: true };
+    }),
   }),
   notifications: router({ list: protectedProcedure.query(({ ctx }) => getNotifications(ctx.user.id)), markRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => { const db = await getDb(); if (!db) throw new Error("数据库不可用"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id))); return { success: true }; }) }),
   schedules: router({
