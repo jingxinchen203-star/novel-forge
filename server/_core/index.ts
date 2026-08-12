@@ -32,9 +32,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Novel content is sent through tRPC; large files should use presigned S3 uploads.
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "128kb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/continueNovel", runScheduledContinuation);

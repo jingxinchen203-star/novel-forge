@@ -1,0 +1,1 @@
+ALTER TABLE `chapters` ADD CONSTRAINT `chapters_project_number_unique` UNIQUE(`projectId`,`chapterNumber`);

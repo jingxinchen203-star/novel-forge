@@ -1,4 +1,4 @@
-import { index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -58,7 +58,7 @@ export const chapters = mysqlTable("chapters", {
   targetWords: int("targetWords").default(3000).notNull(),
   status: mysqlEnum("status", ["planned", "draft", "revised"]).default("planned").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({ projectIdx: index("chapters_project_idx").on(table.projectId) }));
+}, (table) => ({ projectIdx: index("chapters_project_idx").on(table.projectId), projectNumberUnique: uniqueIndex("chapters_project_number_unique").on(table.projectId, table.chapterNumber) }));
 
 export const contentVersions = mysqlTable("content_versions", {
   id: int("id").autoincrement().primaryKey(),
@@ -78,10 +78,22 @@ export const writingSchedules = mysqlTable("writing_schedules", {
   cronExpression: varchar("cronExpression", { length: 80 }).notNull(),
   timezone: varchar("timezone", { length: 80 }).default("UTC").notNull(),
   enabled: int("enabled").default(1).notNull(),
+  lockAt: timestamp("lockAt"),
   lastRunAt: timestamp("lastRunAt"),
+  lastError: text("lastError"),
   scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({ taskIdx: index("writing_schedules_task_idx").on(table.scheduleCronTaskUid) }));
+
+export const generationUsage = mysqlTable("generation_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  projectId: int("projectId").notNull(),
+  windowStartedAt: timestamp("windowStartedAt").notNull(),
+  windowCount: int("windowCount").default(0).notNull(),
+  activeUntil: timestamp("activeUntil"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({ ownerProjectUnique: uniqueIndex("generation_usage_owner_project_unique").on(table.userId, table.projectId) }));
 
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),

@@ -29,7 +29,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     user,
     req: {
       protocol: "https",
-      headers: {},
+      headers: { origin: "https://novel.example", host: "novel.example" },
     } as TrpcContext["req"],
     res: {
       clearCookie: (name: string, options: Record<string, unknown>) => {
@@ -42,6 +42,13 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 }
 
 describe("auth.logout", () => {
+  it("rejects a cross-origin logout mutation", async () => {
+    const { ctx } = createAuthContext();
+    ctx.req.headers = { origin: "https://attacker.example", host: "novel.example" };
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.auth.logout()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("clears the session cookie and reports success", async () => {
     const { ctx, clearedCookies } = createAuthContext();
     const caller = appRouter.createCaller(ctx);

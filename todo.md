@@ -55,3 +55,24 @@
 - [x] 根据桌面端样式审查强化 Novel Forge 的编辑印记/品牌识别
 - [x] 将无项目空状态改造成更贴近稿件、章节卡和编辑批注的创作场景
 - [x] 重新截取桌面端与移动端截图，确认视觉修正后的可读性与布局（桌面/移动均未发现横向溢出、遮挡或关键文字不可读）
+
+# 对抗性加固 TODO
+
+- [x] 统一验证项目、设定、章节、版本和计划的用户/项目/实体归属
+- [x] 为章节增加项目内唯一章节号约束并修复生成/保存竞态
+- [x] 为定时续写增加原子抢锁、成功/失败状态和重试安全
+- [x] 增加计划暂停、恢复、删除，并在回调中检查 enabled
+- [x] 删除项目时清理章节、设定、版本、通知和计划，并删除平台 cron
+- [x] 为所有大文本输入增加字段级长度上限和生成 token 预算
+- [x] 为 cookie mutation 增加受信任 Origin/CSRF 防护（protected mutation 与 auth.logout 均已覆盖）
+- [x] 增加用户/项目级 AI 生成速率限制和并发限制（已升级为 generation_usage 数据库窗口计数与跨实例 activeUntil 锁）
+- [x] 将定时与 AI 错误改为固定错误码和 request ID，避免透传内部详情
+- [x] 增加对抗性 Vitest：Origin、Bearer 通道、生成频率窗口和并发锁基础语义已覆盖；真实数据库并发集成测试仍建议在 staging 执行
+- [x] 运行类型检查、完整测试和必要的数据库迁移验证（pnpm check、pnpm test、pnpm build 通过；迁移 0005/0006/0007 已应用）
+
+- [x] 为 auth.logout 及其他 cookie 驱动的 public mutation 补充同级 Origin/CSRF 防护并测试
+- [x] 将 AI 生成速率限制与并发锁升级为数据库持久化、跨实例可用的方案并测试（迁移 0007 已应用；持久化路径契约测试通过，真实多实例压测需部署后执行）
+
+- [x] 补充 generation_usage 的专项测试，验证窗口计数、activeUntil 锁释放与超限行为（3 个测试通过，并断言 SQL 更新字段语义）
+- [x] 补充 auth.logout 跨源拒绝的回归测试证据
+- [x] 记录 staging 多请求/多实例并发验证边界（本轮未发布 staging；已写入 hardening-validation.md，部署后需执行真实压测）
