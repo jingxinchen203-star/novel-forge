@@ -35,7 +35,7 @@ export function filterAndSortTrendRows(rows: TrendRow[], filters: TrendFilters) 
 }
 
 function FilterSelect({ value, onChange, ariaLabel, children }: { value: string; onChange: (value: string) => void; ariaLabel: string; children: React.ReactNode }) {
-  return <select aria-label={ariaLabel} value={value} onChange={event => onChange(event.target.value)} className="h-9 rounded-none border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]">{children}</select>;
+  return <select aria-label={ariaLabel} value={value} onChange={event => onChange(event.target.value)} className="h-9 min-w-0 max-w-full rounded-none border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]">{children}</select>;
 }
 
 function formatMetric(value: number | null, label: string) {
@@ -72,18 +72,18 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
   const filtered = useMemo(() => filterAndSortTrendRows(rows, { platform, confidence, query, heatThreshold, sortBy }), [confidence, heatThreshold, platform, query, rows, sortBy]);
 
   return <div className="space-y-4">
-    <div className="flex flex-col gap-3 border-y border-foreground/15 py-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex min-w-0 flex-col gap-3 border-y border-foreground/15 py-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-2 text-xs uppercase tracking-[.18em] text-muted-foreground"><SlidersHorizontal className="h-4 w-4" />筛选趋势观察</div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:flex">
-        <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索题材、标题或备注" className="rounded-none lg:w-64" />
+      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
+        <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索题材、标题或备注" className="w-full min-w-0 rounded-none lg:w-64" />
         <FilterSelect value={platform} onChange={value => setPlatform(value as typeof platform)} ariaLabel="平台筛选"><option value="全部">全部平台</option><option value="番茄">番茄</option><option value="抖音">抖音</option><option value="B站">B站</option><option value="我的标签">我的标签</option></FilterSelect>
         <FilterSelect value={confidence} onChange={value => setConfidence(value as typeof confidence)} ariaLabel="可信度筛选"><option value="全部">全部可信度</option><option value="高">高</option><option value="中">中</option><option value="低">低</option><option value="用户">用户标签</option></FilterSelect>
         <FilterSelect value={heatThreshold} onChange={value => setHeatThreshold(value as typeof heatThreshold)} ariaLabel="指标阈值筛选"><option value="全部">全部指标</option><option value="80">≥ 80</option><option value="60">≥ 60</option><option value="40">≥ 40</option></FilterSelect>
         <FilterSelect value={sortBy} onChange={value => setSortBy(value as typeof sortBy)} ariaLabel="趋势排序"><option value="heat">指标优先</option><option value="date">最近采集</option></FilterSelect>
       </div>
     </div>
-    <div className="overflow-x-auto border border-foreground/15">
-      <Table>
+    <div className="w-full max-w-full overflow-x-auto overscroll-x-contain border border-foreground/15">
+      <Table className="min-w-[820px]">
         <TableHeader><TableRow><TableHead>平台</TableHead><TableHead>题材 / 样本</TableHead><TableHead>观察类型</TableHead><TableHead>指标</TableHead><TableHead>可信度</TableHead><TableHead>采集日期</TableHead><TableHead className="text-right">来源 / 操作</TableHead></TableRow></TableHeader>
         <TableBody>{filtered.map(row => <TableRow key={row.id}>
           <TableCell><Badge variant="outline" className="rounded-none whitespace-nowrap">{row.platform}</Badge></TableCell>
