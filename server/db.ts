@@ -1,6 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
+import { getDraftBackupIdsToDelete } from "@shared/draftCleanup";
 import {
   chapters,
   contentVersions,
@@ -82,6 +83,26 @@ export async function getTrends(userId: number) {
 export async function getTrendRefreshRuns(userId: number) {
   const db = await getDb();
   return db ? db.select().from(trendRefreshRuns).where(eq(trendRefreshRuns.userId, userId)).orderBy(desc(trendRefreshRuns.startedAt)).limit(20) : [];
+}
+
+export async function cleanupDraftBackups(userId: number, projectId: number, options?: { retentionDays?: number; keepLatest?: number }) {
+  const db = await getDb();
+  if (!db) return { deleted: 0 };
+  const retentionDays = Math.max(1, Math.min(3650, options?.retentionDays ?? 30));
+  const keepLatest = Math.max(1, Math.min(100, options?.keepLatest ?? 10));
+  const backups = await db.select({ id: contentVersions.id, createdAt: contentVersions.createdAt })
+    .from(contentVersions)
+    .where(and(
+      eq(contentVersions.userId, userId),
+      eq(contentVersions.projectId, projectId),
+      like(contentVersions.label, "服务端草稿备份 ·%"),
+    ))
+    .orderBy(desc(contentVersions.createdAt));
+  const idsToDelete = getDraftBackupIdsToDelete(backups, new Date(), { retentionDays, keepLatest });
+  if (idsToDelete.length) {
+    await db.delete(contentVersions).where(and(eq(contentVersions.userId, userId), eq(contentVersions.projectId, projectId), inArray(contentVersions.id, idsToDelete)));
+  }
+  return { deleted: idsToDelete.length };
 }
 
 export async function getNotifications(userId: number) {

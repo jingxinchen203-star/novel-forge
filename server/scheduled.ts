@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
-import { getDb } from "./db";
-import { users, trendTags, trendRefreshRuns } from "../drizzle/schema";
+import { cleanupDraftBackups, getDb } from "./db";
+import { novelProjects, users, trendTags, trendRefreshRuns } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { ENV } from "./_core/env";
 
@@ -79,6 +79,27 @@ export async function runScheduledTrendRefresh(req: Request, res: Response) {
     if (runId && historyDb) await historyDb.update(trendRefreshRuns).set({ status: "failed", error: String(error).slice(0, 4000), finishedAt: new Date() }).where(eq(trendRefreshRuns.id, runId));
     console.error("[ScheduledTrendRefresh] failed", error);
     return res.status(500).json({ error: "scheduled_trend_refresh_failed" });
+  }
+}
+
+export async function runScheduledDraftCleanup(req: Request, res: Response) {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "database_unavailable" });
+    const owner = (await db.select({ id: users.id }).from(users).where(eq(users.openId, ENV.ownerOpenId)).limit(1))[0];
+    if (!owner) return res.json({ ok: true, skipped: "owner_not_found" });
+    const projects = await db.select({ id: novelProjects.id }).from(novelProjects).where(eq(novelProjects.userId, owner.id));
+    let deleted = 0;
+    for (const project of projects) {
+      const result = await cleanupDraftBackups(owner.id, project.id, { retentionDays: 30, keepLatest: 10 });
+      deleted += result.deleted;
+    }
+    return res.json({ ok: true, taskUid: user.taskUid, projects: projects.length, deleted });
+  } catch (error) {
+    console.error("[ScheduledDraftCleanup] failed", error);
+    return res.status(500).json({ error: "scheduled_draft_cleanup_failed" });
   }
 }
 

@@ -8,7 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { runScheduledContinuation, runScheduledTrendRefresh } from "../scheduled";
+import { runScheduledContinuation, runScheduledDraftCleanup, runScheduledTrendRefresh } from "../scheduled";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +39,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   app.post("/api/scheduled/continueNovel", runScheduledContinuation);
   app.post("/api/scheduled/refreshTrends", runScheduledTrendRefresh);
+  app.post("/api/scheduled/cleanupDrafts", runScheduledDraftCleanup);
   // tRPC API
   app.use(
     "/api/trpc",
