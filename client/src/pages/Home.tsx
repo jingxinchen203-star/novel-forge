@@ -10,10 +10,12 @@ import {
   BookOpen,
   ChevronRight,
   Clock3,
+  Download,
   FileDown,
   FolderPlus,
   Loader2,
   Plus,
+  Save,
   Sparkles,
   Trash2,
   Wand2,
@@ -22,7 +24,9 @@ import { toast } from "sonner";
 import {
   currentHash,
   currentProjectId,
+  lastProjectId,
   projectNavigationUrl,
+  rememberProjectId,
   readNavTarget,
   resolveProjectSelection,
   targetAnchor,
@@ -76,7 +80,7 @@ export default function Home() {
   const trends = trpc.trends.list.useQuery();
   const notifications = trpc.notifications.list.useQuery();
   const [selectedId, setSelectedId] = useState<number | null>(() =>
-    currentProjectId()
+    currentProjectId() ?? lastProjectId()
   );
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const [projectForm, setProjectForm] = useState(emptyProject);
@@ -93,6 +97,7 @@ export default function Home() {
     );
     if (nextId !== selectedId) {
       setSelectedId(nextId);
+      rememberProjectId(nextId);
       if (nextId && typeof window !== "undefined")
         window.history.replaceState(
           null,
@@ -121,6 +126,7 @@ export default function Home() {
   }, []);
   const handleSelectProject = (projectId: number) => {
     setSelectedId(projectId);
+    rememberProjectId(projectId);
     setShowNew(false);
     setSelectedNotification(null);
     setNavigationTarget("workspace");
@@ -160,6 +166,7 @@ export default function Home() {
   const remove = trpc.projects.remove.useMutation({
     onSuccess: () => {
       setSelectedId(null);
+      rememberProjectId(null);
       utils.projects.list.invalidate();
       toast.success("项目已移除");
     },
@@ -719,23 +726,43 @@ function ProjectWorkspace({
     },
     onError: error => toast.error(getMutationErrorMessage(error)),
   });
+  const safeFileName = project.title.trim().replace(/[\\/:*?"<>|]/g, "-") || "novel-forge-project";
+  const chapterText = chapters
+    .map((c: any) => `第${c.chapterNumber}章 ${c.title}\n\n${c.body}`)
+    .join("\n\n");
+  const plainText = `${project.title}\n\n${project.synopsis}\n\n【全书大纲】\n${outline}\n\n${chapterText}`;
+  const markdownText = `# ${project.title}\n\n${project.synopsis}\n\n## 全书大纲\n\n${outline}\n\n${chapters
+    .map((c: any) => `## 第${c.chapterNumber}章 ${c.title}\n\n${c.body}`)
+    .join("\n\n")}`;
+  const backupPayload = JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      project: { title: project.title, genre: project.genre, synopsis: project.synopsis, targetWords: project.targetWords },
+      documents: { ...docs, outline },
+      chapters,
+    },
+    null,
+    2
+  );
+  const downloadFile = (content: string, fileName: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
   const exportText = () => {
-    const text = `${project.title}\n\n${project.synopsis}\n\n【全书大纲】\n${outline}\n\n${chapters.map((c: any) => `第${c.chapterNumber}章 ${c.title}\n\n${c.body}`).join("\n\n")}`;
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${project.title}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadFile(plainText, `${safeFileName}.txt`, "text/plain;charset=utf-8");
+    toast.success("TXT 已下载，可作为本地备份");
   };
   const exportMarkdown = () => {
-    const text = `# ${project.title}\n\n${project.synopsis}\n\n## 全书大纲\n\n${outline}\n\n${chapters.map((c: any) => `## 第${c.chapterNumber}章 ${c.title}\n\n${c.body}`).join("\n\n")}`;
-    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${project.title}.md`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadFile(markdownText, `${safeFileName}.md`, "text/markdown;charset=utf-8");
+    toast.success("Markdown 已下载，可继续编辑或归档");
+  };
+  const exportBackup = () => {
+    downloadFile(backupPayload, `${safeFileName}-backup.json`, "application/json;charset=utf-8");
+    toast.success("项目备份已下载");
   };
   return (
     <div className="space-y-6 motion-rise">
@@ -821,25 +848,34 @@ function ProjectWorkspace({
             {project.synopsis || "尚未填写作品简介。"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 lg:w-auto lg:justify-end">
           <Button
             variant="outline"
-            className="rounded-none"
+            className="min-h-11 flex-1 rounded-none sm:flex-none"
             onClick={exportText}
           >
             <FileDown className="mr-2 h-4 w-4" />
-            TXT
+            下载 TXT
           </Button>
           <Button
             variant="outline"
-            className="rounded-none"
+            className="min-h-11 flex-1 rounded-none sm:flex-none"
             onClick={exportMarkdown}
           >
+            <Download className="mr-2 h-4 w-4" />
             Markdown
           </Button>
           <Button
             variant="outline"
-            className="rounded-none"
+            className="min-h-11 flex-1 rounded-none sm:flex-none"
+            onClick={exportBackup}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            备份项目
+          </Button>
+          <Button
+            variant="outline"
+            className="min-h-11 flex-1 rounded-none sm:flex-none"
             onClick={() => setEditingProject(true)}
           >
             编辑项目
@@ -864,7 +900,7 @@ function ProjectWorkspace({
         <Metric label="续写方式" value="手动触发" />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="rounded-none bg-transparent border-b w-full justify-start gap-8 h-12">
+        <TabsList className="w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent h-12">
           <TabsTrigger
             value="outline"
             className="rounded-none px-0 data-[state=active]:border-b-2 data-[state=active]:border-foreground"
@@ -1004,12 +1040,15 @@ function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="chapters" className="pt-6">
           <div className="grid gap-6 lg:grid-cols-[230px_1fr]">
-            <div className="space-y-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 lg:block lg:space-y-2 lg:overflow-visible">
               {chapters.map((chapter: any) => (
                 <button
                   key={chapter.id}
-                  onClick={() => setActiveChapter(chapter)}
-                  className={`w-full text-left p-3 border ${current?.id === chapter.id ? "bg-foreground text-background" : "bg-card"}`}
+                  onClick={() => {
+                    setActiveChapter(chapter);
+                    window.setTimeout(() => document.getElementById("novel-forge-chapter-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                  }}
+                  className={`min-w-[150px] shrink-0 border p-3 text-left lg:w-full ${current?.id === chapter.id ? "bg-foreground text-background" : "bg-card"}`}
                 >
                   <p className="text-[10px] uppercase tracking-[.2em] opacity-60">
                     Chapter {String(chapter.chapterNumber).padStart(2, "0")}
@@ -1023,11 +1062,12 @@ function ProjectWorkspace({
                 </p>
               )}
             </div>
-            <Card className="rounded-none">
+            <Card id="novel-forge-chapter-editor" className="scroll-mt-20 rounded-none">
               <CardHeader>
                 <CardTitle className="font-display text-2xl">
                   正文生成器
                 </CardTitle>
+                <p className="text-sm leading-6 text-muted-foreground">手机端可横向切换章节；正文区域使用较大字号，适合连续阅读和修改。</p>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 md:grid-cols-2 mb-4">
@@ -1065,7 +1105,7 @@ function ProjectWorkspace({
                   }
                 />
                 <Textarea
-                  className="min-h-[330px] leading-8 font-serif"
+                  className="min-h-[55vh] resize-y px-4 py-4 text-[16px] leading-8 font-serif md:min-h-[330px]"
                   placeholder="生成后的正文将在这里呈现，也可以直接手动修改。"
                   value={current?.body ?? ""}
                   onChange={e =>
@@ -1075,9 +1115,9 @@ function ProjectWorkspace({
                     })
                   }
                 />
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="sticky bottom-3 z-10 mt-4 grid grid-cols-2 gap-2 bg-background/95 p-2 shadow-sm backdrop-blur sm:static sm:flex sm:flex-wrap sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
                   <Button
-                    className="rounded-none"
+                    className="min-h-11 rounded-none"
                     disabled={generateChapter.isPending}
                     onClick={() =>
                       generateChapter.mutate({
@@ -1097,7 +1137,7 @@ function ProjectWorkspace({
                   </Button>
                   <Button
                     variant="outline"
-                    className="rounded-none"
+                    className="min-h-11 rounded-none"
                     disabled={continueChapter.isPending}
                     onClick={() =>
                       continueChapter.mutate({
@@ -1112,15 +1152,15 @@ function ProjectWorkspace({
                     AI 续写下一章
                   </Button>
                   <Input
-                    className="min-w-[280px] rounded-none"
+                    className="col-span-2 min-h-11 rounded-none sm:min-w-[280px] sm:flex-1"
                     value={style}
                     onChange={e => setStyle(e.target.value)}
                     placeholder="风格指令"
                   />
                   <Button
                     variant="outline"
-                    className="rounded-none"
-                    disabled={!current?.id}
+                    className="min-h-11 rounded-none"
+                    disabled={!current?.id || saveChapter.isPending}
                     onClick={() =>
                       current &&
                       saveChapter.mutate({
@@ -1132,7 +1172,8 @@ function ProjectWorkspace({
                       })
                     }
                   >
-                    保存正文
+                    <Save className="mr-2 h-4 w-4" />
+                    {saveChapter.isPending ? "保存中…" : "保存正文"}
                   </Button>
                 </div>
               </CardContent>

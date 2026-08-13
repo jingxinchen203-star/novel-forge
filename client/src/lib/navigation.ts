@@ -6,12 +6,35 @@ export function currentHash() {
   return typeof window === "undefined" ? "" : window.location.hash;
 }
 
+const LAST_PROJECT_KEY = "novel-forge:last-project";
+
 export function currentProjectId() {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("project");
   if (!value || !/^\d+$/.test(value)) return null;
   const projectId = Number(value);
   return Number.isSafeInteger(projectId) && projectId > 0 ? projectId : null;
+}
+
+export function lastProjectId() {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(LAST_PROJECT_KEY);
+    const projectId = Number(value);
+    return Number.isSafeInteger(projectId) && projectId > 0 ? projectId : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberProjectId(projectId: number | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (projectId) window.localStorage.setItem(LAST_PROJECT_KEY, String(projectId));
+    else window.localStorage.removeItem(LAST_PROJECT_KEY);
+  } catch {
+    // Private browsing or blocked storage should not block navigation.
+  }
 }
 
 export function projectNavigationUrl(projectId: number, target: NavTarget = "workspace") {

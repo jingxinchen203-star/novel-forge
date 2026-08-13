@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { currentHash, currentProjectId, projectNavigationUrl, readNavTarget, resolveProjectSelection, targetAnchor, targetToWorkspaceTab } from "../client/src/lib/navigation";
+import { currentHash, currentProjectId, lastProjectId, projectNavigationUrl, readNavTarget, rememberProjectId, resolveProjectSelection, targetAnchor, targetToWorkspaceTab } from "../client/src/lib/navigation";
 
 const layoutSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardLayout.tsx"), "utf8");
 const homeSource = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
+const authSource = readFileSync(resolve(process.cwd(), "client/src/_core/hooks/useAuth.ts"), "utf8");
 
 describe("sidebar navigation", () => {
   it("resolves all menu targets from hash and safely falls back for unknown hashes", () => {
@@ -22,6 +23,18 @@ describe("sidebar navigation", () => {
     expect(currentProjectId()).toBe(42);
     expect(projectNavigationUrl(7)).toBe("/?from_webdev=1&project=7#workspace");
     expect(projectNavigationUrl(7, "trends")).toBe("/?from_webdev=1&project=7#trends");
+    (globalThis as any).window = previousWindow;
+  });
+
+  it("restores the remembered project safely when storage is available", () => {
+    const previousWindow = (globalThis as any).window;
+    const storage = new Map<string, string>();
+    (globalThis as any).window = { localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } };
+    expect(lastProjectId()).toBeNull();
+    rememberProjectId(7);
+    expect(lastProjectId()).toBe(7);
+    rememberProjectId(null);
+    expect(lastProjectId()).toBeNull();
     (globalThis as any).window = previousWindow;
   });
 
@@ -63,6 +76,15 @@ describe("sidebar navigation", () => {
     expect(layoutSource).toContain("登录验证未完成或会话已失效");
     expect(layoutSource).toContain("重新登录");
     expect(homeSource).toContain("AI 暂时无法生成，请稍后重试");
+    expect(homeSource).toContain("novel-forge-chapter-editor");
+    expect(homeSource).toContain("下载 TXT");
+    expect(homeSource).toContain("Markdown");
+    expect(homeSource).toContain("备份项目");
+    expect(homeSource).toContain("lastProjectId()");
+    expect(homeSource).toContain("rememberProjectId");
+    expect(authSource).toContain('const RETURN_TO_KEY = "novel-forge:return-to"');
+    expect(authSource).toContain("returnTo.startsWith(\"/\")");
+    expect(authSource).toContain("window.localStorage.setItem(RETURN_TO_KEY");
     expect(homeSource).toContain("当前项目正在生成或请求过于频繁");
     for (const tab of ["trends", "versions", "schedule"]) expect(homeSource).toContain(`value="${tab}"`);
     expect(homeSource).toContain("function ProjectModulePage");

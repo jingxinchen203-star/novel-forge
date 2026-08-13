@@ -8,6 +8,8 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+const RETURN_TO_KEY = "novel-forge:return-to";
+
 export function useAuth(options?: UseAuthOptions) {
   // Login is started via startLogin() in the effect below, only when we actually
   // navigate — never during render. startLogin() mints a one-time nonce + writes
@@ -70,13 +72,32 @@ export function useAuth(options?: UseAuthOptions) {
   ]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (state.user) {
+      try {
+        const returnTo = window.localStorage.getItem(RETURN_TO_KEY);
+        if (returnTo && returnTo.startsWith("/") && returnTo !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          window.localStorage.removeItem(RETURN_TO_KEY);
+          window.location.replace(returnTo);
+          return;
+        }
+        if (returnTo) window.localStorage.removeItem(RETURN_TO_KEY);
+      } catch {
+        // A blocked localStorage should not prevent a successful login.
+      }
+      return;
+    }
     if (!redirectOnUnauthenticated) return;
     if (meQuery.isLoading || logoutMutation.isPending) return;
-    if (state.user) return;
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
 
-    // Navigate at this moment only. startLogin() mints the nonce + cookie itself.
+    // Preserve the current project/module before OAuth. The callback returns to the app root.
+    try {
+      window.localStorage.setItem(RETURN_TO_KEY, `${window.location.pathname}${window.location.search}${window.location.hash}`);
+    } catch {
+      // Private browsing or blocked storage should not block login.
+    }
     if (redirectPath) {
       window.location.href = redirectPath;
     } else {
