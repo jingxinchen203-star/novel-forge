@@ -65,5 +65,10 @@ describe("sidebar navigation", () => {
     expect(homeSource).toContain("AI 暂时无法生成，请稍后重试");
     expect(homeSource).toContain("当前项目正在生成或请求过于频繁");
     for (const tab of ["trends", "versions", "schedule"]) expect(homeSource).toContain(`value="${tab}"`);
+    expect(homeSource).toContain("function ProjectModulePage");
+    expect(homeSource).toContain('navigationTarget === "trends" || navigationTarget === "versions" || navigationTarget === "schedule"');
+    expect(homeSource).not.toContain('<TabsTrigger\n            value="trends"');
+    expect(homeSource).not.toContain('<TabsTrigger\n            value="versions"');
+    expect(homeSource).not.toContain('<TabsTrigger\n            value="schedule"');
   });
 });

@@ -432,6 +432,12 @@ export default function Home() {
                   onCreate={() => setShowNew(true)}
                 />
               )
+            ) : navigationTarget === "trends" || navigationTarget === "versions" || navigationTarget === "schedule" ? (
+              <ProjectModulePage
+                target={navigationTarget}
+                project={selected}
+                trends={trends.data ?? []}
+              />
             ) : (
               <ProjectWorkspace
                 project={selected}
@@ -486,6 +492,41 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </div>
     </div>
   );
+}
+
+function ProjectModulePage({
+  target,
+  project,
+  trends,
+}: {
+  target: string;
+  project: any;
+  trends: any[];
+}) {
+  const versions = trpc.workspace.versions.useQuery({
+    projectId: project.id,
+    entityType: "outline",
+    entityId: 0,
+  });
+  const schedules = trpc.schedules.list.useQuery();
+  const [selectedVersion, setSelectedVersion] = useState<any>(null);
+  const title = target === "trends" ? "题材趋势库" : target === "versions" ? "版本档案" : "续写计划";
+  const eyebrow = target === "trends" ? "RESEARCH / 题材观察" : target === "versions" ? "ARCHIVE / 版本记录" : "NEXT / 手动续写";
+  const description = target === "trends" ? "把公开平台观察放在创作页之外，作为独立研究工具使用。" : target === "versions" ? "每次大纲和正文生成都会留下可回看的版本记录。" : "自动续写已关闭；只有你在正文编辑中点击 AI 续写，系统才会生成内容。";
+  const goWorkspace = () => {
+    if (typeof window === "undefined") return;
+    window.history.pushState(null, "", projectNavigationUrl(project.id, "workspace"));
+    window.dispatchEvent(new Event("hashchange"));
+  };
+  return <div className="module-page motion-rise">
+    <div className="module-page__head">
+      <div><p className="module-page__eyebrow">{eyebrow}</p><h2 className="module-page__title">{title}</h2><p className="module-page__description">{description}</p></div>
+      <Button variant="outline" className="rounded-none" onClick={goWorkspace}>返回创作工作台</Button>
+    </div>
+    {target === "trends" && <StandaloneTrendPanel trends={trends} />}
+    {target === "versions" && <Card className="rounded-none"><CardHeader><CardTitle className="font-display text-2xl">{project.title} · 版本时间线</CardTitle></CardHeader><CardContent><div className="grid gap-5 lg:grid-cols-[280px_1fr]"> <div className="space-y-2">{versions.data?.map((version: any) => <button key={version.id} onClick={() => setSelectedVersion(version)} className={`w-full border p-3 text-left ${selectedVersion?.id === version.id ? "bg-foreground text-background" : "bg-card"}`}><p className="text-sm font-semibold">{version.label}</p><p className="mt-1 text-xs opacity-60">{new Date(version.createdAt).toLocaleString()}</p></button>)}{!versions.data?.length && <p className="text-sm leading-6 text-muted-foreground">暂时还没有版本记录。生成大纲或正文后，版本会自动出现在这里。</p>}</div><div className="min-h-[260px] border p-5"><p className="mb-4 text-xs uppercase tracking-[.2em] text-muted-foreground">{selectedVersion?.label ?? "选择一个版本"}</p><pre className="whitespace-pre-wrap font-sans text-sm leading-7">{selectedVersion?.content ?? ""}</pre></div></div></CardContent></Card>}
+    {target === "schedule" && <Card className="max-w-3xl rounded-none"><CardHeader><CardTitle className="font-display text-2xl">手动续写工作流</CardTitle></CardHeader><CardContent><p className="mb-5 text-sm leading-7 text-muted-foreground">历史自动计划不会再调用 AI。请进入创作工作台的正文编辑，审核当前章节后点击“AI 续写下一章”。</p><div className="border-l-2 border-accent pl-4 text-xs leading-6 text-muted-foreground">生成仍受项目配额、并发锁和版本归档保护。</div><div className="mt-6 space-y-3">{schedules.data?.filter((schedule: any) => schedule.projectId === project.id).map((schedule: any) => <div key={schedule.id} className="border p-4"><p className="font-mono text-xs tracking-[.12em]">历史计划：{schedule.cronExpression}</p><p className="mt-2 text-xs text-muted-foreground">已停用；不会再自动生成章节。</p></div>)}{!schedules.data?.some((schedule: any) => schedule.projectId === project.id) && <p className="text-sm text-muted-foreground">当前项目没有后台续写计划。</p>}</div></CardContent></Card>}
+  </div>;
 }
 
 function ProjectWorkspace({
@@ -843,24 +884,6 @@ function ProjectWorkspace({
             className="rounded-none px-0 data-[state=active]:border-b-2 data-[state=active]:border-foreground"
           >
             正文编辑
-          </TabsTrigger>
-          <TabsTrigger
-            value="trends"
-            className="rounded-none px-0 data-[state=active]:border-b-2 data-[state=active]:border-foreground"
-          >
-            趋势参考
-          </TabsTrigger>
-          <TabsTrigger
-            value="versions"
-            className="rounded-none px-0 data-[state=active]:border-b-2 data-[state=active]:border-foreground"
-          >
-            版本档案
-          </TabsTrigger>
-          <TabsTrigger
-            value="schedule"
-            className="rounded-none px-0 data-[state=active]:border-b-2 data-[state=active]:border-foreground"
-          >
-            续写计划
           </TabsTrigger>
         </TabsList>
         <TabsContent value="outline" className="pt-6">
