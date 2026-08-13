@@ -31,6 +31,9 @@ export const trendTags = mysqlTable("trend_tags", {
   category: varchar("category", { length: 80 }).notNull(),
   heat: int("heat").default(50).notNull(),
   note: text("note").notNull(),
+  source: varchar("source", { length: 180 }).default("手动记录").notNull(),
+  collectedAt: timestamp("collectedAt").defaultNow().notNull(),
+  automated: int("automated").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({ userIdx: index("trend_tags_user_idx").on(table.userId) }));

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   BookOpen,
   ChevronRight,
@@ -84,6 +93,28 @@ function writeWritingPreference(key: string, value: number) {
     window.localStorage.setItem(key, String(Math.max(0, Math.round(value))));
   } catch {
     // Blocked storage should not prevent writing.
+  }
+}
+
+function getDraftKey(projectId: number, chapterId: number) {
+  return `novel-forge:draft:${projectId}:${chapterId}`;
+}
+
+function readChapterDraft(projectId: number, chapterId: number) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getDraftKey(projectId, chapterId));
+    return raw ? JSON.parse(raw) as { title: string; outline: string; body: string; targetWords: number; updatedAt: number } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeChapterDraft(projectId: number, chapterId: number, draft: { title: string; outline: string; body: string; targetWords: number }) {
+  try {
+    window.localStorage.setItem(getDraftKey(projectId, chapterId), JSON.stringify({ ...draft, updatedAt: Date.now() }));
+  } catch {
+    // Offline or blocked storage should not interrupt writing.
   }
 }
 
@@ -676,6 +707,11 @@ function ProjectWorkspace({
   const [assistantMode, setAssistantMode] = useState<"polish" | "names" | "ideas">("polish");
   const [assistantText, setAssistantText] = useState("");
   const [assistantResult, setAssistantResult] = useState("");
+  const [polishOriginal, setPolishOriginal] = useState("");
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"saved" | "restored" | "offline">("saved");
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine); 
+  const restoredDraftKey = useRef("");
   const assistWriting = trpc.workspace.assistWriting.useMutation({
     onSuccess: value => {
       setAssistantResult(value);
@@ -684,9 +720,11 @@ function ProjectWorkspace({
     onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const saveChapter = trpc.workspace.saveChapter.useMutation({
-    onSuccess: () => {
+    onSuccess: (_value, variables) => {
       utils.workspace.get.invalidate({ projectId: project.id });
       utils.workspace.versions.invalidate();
+      try { window.localStorage.removeItem(getDraftKey(project.id, variables.id)); } catch {}
+      setDraftStatus("saved");
       toast.success("章节已保存");
     },
     onError: error => toast.error(getMutationErrorMessage(error)),
@@ -743,6 +781,30 @@ function ProjectWorkspace({
   const chapters = workspace?.chapters ?? [];
   const current = activeChapter ?? chapters[0];
   const currentChapterWords = countWritingUnits(current?.body);
+  useEffect(() => {
+    const onOnline = () => { setIsOnline(true); setDraftStatus("saved"); };
+    const onOffline = () => { setIsOnline(false); setDraftStatus("offline"); };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+  }, []);
+  useEffect(() => {
+    if (!current?.id) return;
+    const key = getDraftKey(project.id, current.id);
+    const draft = readChapterDraft(project.id, current.id);
+    const serverUpdatedAt = current.updatedAt ? new Date(current.updatedAt).getTime() : 0;
+    if (draft && draft.updatedAt > serverUpdatedAt && restoredDraftKey.current !== key) {
+      restoredDraftKey.current = key;
+      setActiveChapter({ ...current, title: draft.title, outline: draft.outline, body: draft.body, targetWords: draft.targetWords });
+      setDraftStatus("restored");
+      toast.success("已恢复本机未提交草稿");
+    }
+  }, [project.id, current?.id]);
+  useEffect(() => {
+    if (!current?.id) return;
+    writeChapterDraft(project.id, current.id, { title: current.title ?? "", outline: current.outline ?? "", body: current.body ?? "", targetWords: current.targetWords ?? 3000 });
+    setDraftStatus(isOnline ? "saved" : "offline");
+  }, [project.id, current?.id, current?.title, current?.outline, current?.body, current?.targetWords, isOnline]);
   const [dailyGoal, setDailyGoal] = useState(() => readWritingPreference(`novel-forge:daily-goal:${project.id}`, 1000));
   const [dailyBaseline, setDailyBaseline] = useState(wordCount);
   useEffect(() => {
@@ -1133,15 +1195,17 @@ function ProjectWorkspace({
                   <label className="col-span-2 bg-card p-3 sm:col-span-1"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">每日目标</span><Input aria-label="每日写作目标" type="number" min={1} step={100} className="mt-2 h-9 rounded-none" value={dailyGoal} onChange={event => { const value = Math.max(1, Number(event.target.value) || 1); setDailyGoal(value); writeWritingPreference(`novel-forge:daily-goal:${project.id}`, value); }} /></label>
                 </div>
                 <div className="mb-5 rounded-none border border-border bg-card p-3"><div className="mb-2 flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">今日写作目标（按今日新增字数）</span><strong>{dailyWritten.toLocaleString()} / {dailyGoal.toLocaleString()} 字</strong></div><Progress value={dailyProgress} aria-label={`每日写作目标完成 ${dailyProgress}%`} /><p className="mt-2 text-[11px] text-muted-foreground">完成度 {dailyProgress}% · 保存正文后会更新今日新增字数；首次打开项目时会建立当天基线。</p></div>
-                <Card className="mb-5 rounded-none border-accent/40 bg-accent/5">
+                <Card className="mb-5 hidden rounded-none border-accent/40 bg-accent/5 md:block">
                   <CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="font-display text-xl">AI 写作助手</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">AI 只提供建议；润色结果不会自动覆盖正文。</p></div><Sparkles className="h-5 w-5 text-accent" /></div></CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">{([['polish', '一键润色'], ['names', '角色名字'], ['ideas', '剧情灵感']] as const).map(([mode, label]) => <Button key={mode} type="button" variant={assistantMode === mode ? "default" : "outline"} className="min-h-10 rounded-none px-2 text-xs" onClick={() => { setAssistantMode(mode); setAssistantResult(""); }}>{label}</Button>)}</div>
                     <Textarea className="min-h-28 text-[16px] leading-7" value={assistantText} onChange={event => setAssistantText(event.target.value)} placeholder={assistantMode === "polish" ? "粘贴或输入想要润色的正文；留空则使用当前章节正文。" : assistantMode === "names" ? "输入角色设定，例如：冷静、擅长机关术的女主。" : "输入剧情方向或冲突；留空则参考当前章节和大纲。"} />
-                    <Button type="button" className="min-h-11 rounded-none" disabled={assistWriting.isPending} onClick={() => assistWriting.mutate({ projectId: project.id, chapterId: current?.id, mode: assistantMode, text: assistantText.trim() || current?.body || docs.characters || outline || "请基于当前项目提供建议", context: `${current?.outline ?? ""}\n${outline}\n${docs.characters}\n${docs.conflicts}` })}>{assistWriting.isPending ? "生成中…" : assistantMode === "polish" ? "生成润色建议" : assistantMode === "names" ? "生成角色名字" : "生成剧情灵感"}</Button>
-                    {assistantResult && <div className="space-y-3 rounded-none border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">AI 建议 / 待审核</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="丢弃 AI 建议" onClick={() => setAssistantResult("")}><X className="h-4 w-4" /></Button></div><Textarea aria-label="AI 建议结果" className="min-h-36 border-0 bg-transparent p-0 text-[16px] leading-7 shadow-none focus-visible:ring-0" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} /><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { void navigator.clipboard?.writeText(assistantResult); toast.success("建议已复制"); }}><Copy className="mr-2 h-3.5 w-3.5" />复制建议</Button>{assistantMode === "polish" && <Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}><Check className="mr-2 h-3.5 w-3.5" />采用润色结果</Button>}</div></div>}
+                    <Button type="button" className="min-h-11 rounded-none" disabled={assistWriting.isPending} onClick={() => { const source = assistantText.trim() || current?.body || docs.characters || outline || "请基于当前项目提供建议"; if (assistantMode === "polish") setPolishOriginal(source); assistWriting.mutate({ projectId: project.id, chapterId: current?.id, mode: assistantMode, text: source, context: `${current?.outline ?? ""}\n${outline}\n${docs.characters}\n${docs.conflicts}` }); }}>{assistWriting.isPending ? "生成中…" : assistantMode === "polish" ? "生成润色建议" : assistantMode === "names" ? "生成角色名字" : "生成剧情灵感"}</Button>
+                    {assistantResult && <div className="space-y-3 rounded-none border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">AI 建议 / 待审核</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="丢弃 AI 建议" onClick={() => setAssistantResult("")}><X className="h-4 w-4" /></Button></div>{assistantMode === "polish" ? <div className="grid gap-3 md:grid-cols-2"><div className="min-w-0"><p className="mb-2 text-[10px] uppercase tracking-[.16em] text-muted-foreground">原文</p><Textarea aria-label="润色原文" readOnly className="min-h-36 resize-y bg-muted/30 text-[16px] leading-7" value={polishOriginal || current?.body || ""} /></div><div className="min-w-0"><p className="mb-2 text-[10px] uppercase tracking-[.16em] text-accent">AI 润色结果</p><Textarea aria-label="AI 润色结果" className="min-h-36 resize-y text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} /></div></div> : <Textarea aria-label="AI 建议结果" className="min-h-36 text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} />}<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { void navigator.clipboard?.writeText(assistantResult); toast.success("建议已复制"); }}><Copy className="mr-2 h-3.5 w-3.5" />复制建议</Button>{assistantMode === "polish" && <Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}><Check className="mr-2 h-3.5 w-3.5" />采用润色结果</Button>}</div></div>}
                   </CardContent>
                 </Card>
+                <div className="mb-5 md:hidden"><Button type="button" variant="outline" className="min-h-11 w-full rounded-none border-accent/50" onClick={() => setAssistantOpen(true)}><Sparkles className="mr-2 h-4 w-4 text-accent" />打开 AI 写作助手{assistantResult ? " · 有待审核建议" : ""}</Button><Drawer open={assistantOpen} onOpenChange={setAssistantOpen}><DrawerContent className="max-h-[88vh]"><DrawerHeader><DrawerTitle className="font-display text-xl">AI 写作助手</DrawerTitle><DrawerDescription>在底部抽屉中生成建议，审核后再回填正文。</DrawerDescription></DrawerHeader><div className="overflow-y-auto px-4 pb-4"><div className="grid grid-cols-3 gap-2">{([['polish', '一键润色'], ['names', '角色名字'], ['ideas', '剧情灵感']] as const).map(([mode, label]) => <Button key={mode} type="button" variant={assistantMode === mode ? "default" : "outline"} className="min-h-10 rounded-none px-2 text-xs" onClick={() => { setAssistantMode(mode); setAssistantResult(""); }}>{label}</Button>)}</div><Textarea className="mt-3 min-h-28 text-[16px] leading-7" value={assistantText} onChange={event => setAssistantText(event.target.value)} placeholder={assistantMode === "polish" ? "粘贴或输入想要润色的正文；留空则使用当前章节正文。" : assistantMode === "names" ? "输入角色设定，例如：冷静、擅长机关术的女主。" : "输入剧情方向或冲突；留空则参考当前章节和大纲。"} /><Button type="button" className="mt-3 min-h-11 w-full rounded-none" disabled={assistWriting.isPending} onClick={() => { const source = assistantText.trim() || current?.body || docs.characters || outline || "请基于当前项目提供建议"; if (assistantMode === "polish") setPolishOriginal(source); assistWriting.mutate({ projectId: project.id, chapterId: current?.id, mode: assistantMode, text: source, context: `${current?.outline ?? ""}\n${outline}\n${docs.characters}\n${docs.conflicts}` }); }}>{assistWriting.isPending ? "生成中…" : assistantMode === "polish" ? "生成润色建议" : assistantMode === "names" ? "生成角色名字" : "生成剧情灵感"}</Button>{assistantResult && <div className="mt-4 space-y-3 border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">AI 建议 / 待审核</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="丢弃 AI 建议" onClick={() => setAssistantResult("")}><X className="h-4 w-4" /></Button></div>{assistantMode === "polish" ? <div className="space-y-3"><div><p className="mb-1 text-[10px] uppercase tracking-[.16em] text-muted-foreground">原文</p><Textarea readOnly aria-label="移动端润色原文" className="min-h-28 bg-muted/30 text-[16px] leading-7" value={polishOriginal || current?.body || ""} /></div><div><p className="mb-1 text-[10px] uppercase tracking-[.16em] text-accent">AI 润色结果</p><Textarea aria-label="移动端 AI 润色结果" className="min-h-28 text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} /></div></div> : <Textarea aria-label="移动端 AI 建议结果" className="min-h-32 text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} />}<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { void navigator.clipboard?.writeText(assistantResult); toast.success("建议已复制"); }}><Copy className="mr-2 h-3.5 w-3.5" />复制建议</Button>{assistantMode === "polish" && <DrawerClose asChild><Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}><Check className="mr-2 h-3.5 w-3.5" />采用并返回正文</Button></DrawerClose>}</div></div>}</div><DrawerFooter><DrawerClose asChild><Button variant="outline" className="min-h-11 rounded-none">暂时关闭</Button></DrawerClose></DrawerFooter></DrawerContent></Drawer></div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{isOnline ? "在线编辑" : "离线编辑 · 草稿保存在本机"}</span><span>{draftStatus === "restored" ? "已恢复未提交草稿" : draftStatus === "offline" ? "离线草稿已自动保存" : "草稿自动保存"}</span></div>
                 <div className="grid gap-3 md:grid-cols-2 mb-4">
                   <Input
                     placeholder="章节标题"
