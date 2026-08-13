@@ -225,3 +225,8 @@
 
 - [x] 对 URL project 参数做用户项目列表校验，无效或已删除项目回退到首个可访问项目并避免 workspace 错误
 - [x] 增加无效 project 深链接回归测试，覆盖非数字、越权 ID 和已删除 ID（resolveProjectSelection 行为测试）
+
+# 本轮修复 TODO
+
+- [x] 项目深链接无效回退时保留当前合法 hash 模块，不强制覆盖为 workspace
+- [x] 增加回退场景的 hash 保留测试，并完成 check、test、build 验证（18 个测试文件、53 个测试通过）

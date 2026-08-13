@@ -21,6 +21,7 @@ describe("sidebar navigation", () => {
     (globalThis as any).window = { location: { search: "?from_webdev=1&project=42", href: "https://novel.test/?from_webdev=1&project=42#workspace", hash: "#workspace" } };
     expect(currentProjectId()).toBe(42);
     expect(projectNavigationUrl(7)).toBe("/?from_webdev=1&project=7#workspace");
+    expect(projectNavigationUrl(7, "trends")).toBe("/?from_webdev=1&project=7#trends");
     (globalThis as any).window = previousWindow;
   });
 
@@ -28,6 +29,13 @@ describe("sidebar navigation", () => {
     expect(resolveProjectSelection([3, 7], 7)).toBe(7);
     expect(resolveProjectSelection([3, 7], 999)).toBe(3);
     expect(resolveProjectSelection([], 999)).toBeNull();
+  });
+
+  it("keeps the requested module when a project link is repaired", () => {
+    const previousWindow = (globalThis as any).window;
+    (globalThis as any).window = { location: { href: "https://novel.test/?from_webdev=1&project=999#trends" } };
+    expect(projectNavigationUrl(3, "trends")).toBe("/?from_webdev=1&project=3#trends");
+    (globalThis as any).window = previousWindow;
   });
 
   it("maps feature targets to the matching workspace tabs and anchors", () => {

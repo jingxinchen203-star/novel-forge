@@ -14,11 +14,11 @@ export function currentProjectId() {
   return Number.isSafeInteger(projectId) && projectId > 0 ? projectId : null;
 }
 
-export function projectNavigationUrl(projectId: number) {
-  if (typeof window === "undefined") return "#workspace";
+export function projectNavigationUrl(projectId: number, target: NavTarget = "workspace") {
+  if (typeof window === "undefined") return `#${target}`;
   const url = new URL(window.location.href);
   url.searchParams.set("project", String(projectId));
-  url.hash = "workspace";
+  url.hash = target;
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
