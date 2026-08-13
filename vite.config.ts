@@ -191,16 +191,6 @@ export default defineConfig({
         entryFileNames: "assets/[name].js",
         chunkFileNames: "assets/[name].js",
         assetFileNames: "assets/[name][extname]",
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          // Keep React and the libraries that call React.createContext in the same
-          // chunk. Splitting React into vendor while Radix stays in ui-vendor
-          // creates a circular chunk dependency that can leave React undefined
-          // on static hosts, preventing createRoot from ever running.
-          if (id.includes("/react/") || id.includes("/react-dom/") || id.includes("/scheduler/")) return "ui-vendor";
-          if (id.includes("@radix-ui") || id.includes("@tanstack") || id.includes("@trpc") || id.includes("lucide-react")) return "ui-vendor";
-          return "vendor";
-        },
       },
     },
   },
