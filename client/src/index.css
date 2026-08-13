@@ -37,6 +37,7 @@ input, textarea { background: rgba(255, 253, 248, .64); }
 input:hover, textarea:hover { border-color: rgba(182, 111, 69, .48); }
 .editorial-grid .border-dashed { background: rgba(252, 250, 245, .32); }
 .editorial-grid .rounded-none.border { box-shadow: var(--paper-shadow); background: rgba(252, 250, 245, .85); }
+.editorial-grid .rounded-none.border.release-notice-card { background: var(--card) !important; background-image: none; isolation: isolate; opacity: 1; }
 .editorial-grid [role="tablist"] { position: relative; }
 .editorial-grid [role="tab"] { position: relative; color: var(--muted-foreground); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .editorial-grid [role="tab"][data-state="active"] { color: var(--foreground); }
