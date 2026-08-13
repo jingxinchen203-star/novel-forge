@@ -36,4 +36,11 @@ describe("Home navigation branches without a project", () => {
     expect(html).toContain(title);
     expect(html).toContain(marker);
   });
+
+  it("exposes a native project entry that opens the workspace", async () => {
+    const source = await import("node:fs/promises").then(fs => fs.readFile(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8"));
+    expect(source).toContain('href="#workspace"');
+    expect(source).toContain("打开工作台");
+    expect(source).toContain("handleSelectProject");
+  });
 });

@@ -206,3 +206,9 @@
 - [x] 定位 generateOutline 的 direction 空值提交链路（Home 直接提交未填写的 direction，触发后端 zod too_small）
 - [x] 前端在故事方向为空时阻止提交并显示明确提示（清理首尾空白后校验，显示“请先填写故事方向，再生成章节大纲”）
 - [x] 增加空方向与带空白方向的回归测试，完成 check、test、build（18 个测试文件、49 个测试通过）
+
+# 小说项目列表点击修复 TODO
+
+- [x] 定位小说项目卡片是否缺少 click/keyboard 入口或 selectedId 切换链路（原按钮缺少明确导航反馈，点击后未稳定定位 workspace）
+- [x] 修复项目卡片点击、键盘操作和进入工作台行为（原生 #workspace 锚点、选择状态、关闭新建表单、明确“打开工作台”入口）
+- [x] 增加项目选择回归测试并完成 check、test、build 验证（18 个测试文件、50 个测试通过）
