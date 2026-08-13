@@ -32,7 +32,11 @@ describe("editor enhancements", () => {
     expect(homeSource).toContain("一键润色");
     expect(homeSource).toContain("角色名字");
     expect(homeSource).toContain("剧情灵感");
+    expect(homeSource).toContain("差异高亮");
+    expect(homeSource).toContain("已保存");
+    expect(homeSource).toContain("手动更新趋势");
     expect(routerSource).toContain("assistWriting");
+    expect(routerSource).toContain("refresh: protectedProcedure");
     expect(routerSource).toContain('z.enum(["polish", "names", "ideas"])');
     expect(routerSource).toContain("reserveGenerationSlot(ctx.user.id, input.projectId)");
   });

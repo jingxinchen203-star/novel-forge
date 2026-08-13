@@ -22,16 +22,17 @@ export type TrendRow = {
   isUser?: boolean;
 };
 
-export type TrendFilters = { platform: "全部" | TrendPlatform; confidence: "全部" | TrendConfidence | "用户"; query: string; heatThreshold: "全部" | "80" | "60" | "40"; sortBy: "heat" | "date" };
+export type TrendFilters = { platform: "全部" | TrendPlatform; confidence: "全部" | TrendConfidence | "用户"; category?: string; query: string; heatThreshold: "全部" | "80" | "60" | "40"; sortBy: "heat" | "date" };
 
 export function filterAndSortTrendRows(rows: TrendRow[], filters: TrendFilters) {
   const normalized = filters.query.trim().toLowerCase();
   return rows.filter(row => {
     const matchesPlatform = filters.platform === "全部" || row.platform === filters.platform;
     const matchesConfidence = filters.confidence === "全部" || row.confidence === filters.confidence;
+    const matchesCategory = !filters.category || filters.category === "全部" || row.genre === filters.category;
     const matchesQuery = !normalized || `${row.title} ${row.genre} ${row.note}`.toLowerCase().includes(normalized);
     const matchesHeat = filters.heatThreshold === "全部" || (row.metricValue !== null && row.metricValue >= Number(filters.heatThreshold));
-    return matchesPlatform && matchesConfidence && matchesQuery && matchesHeat;
+    return matchesPlatform && matchesConfidence && matchesCategory && matchesQuery && matchesHeat;
   }).sort((a, b) => filters.sortBy === "date" ? b.collectedAt.localeCompare(a.collectedAt) : (b.metricValue ?? -1) - (a.metricValue ?? -1));
 }
 
@@ -48,6 +49,7 @@ function formatMetric(value: number | null, label: string) {
 export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; onEdit?: (trend: UserTrend) => void; onDelete?: (trend: UserTrend) => void }) {
   const [platform, setPlatform] = useState<"全部" | TrendPlatform>("全部");
   const [confidence, setConfidence] = useState<"全部" | TrendConfidence | "用户">("全部");
+  const [category, setCategory] = useState("全部");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"heat" | "date">("heat");
   const [heatThreshold, setHeatThreshold] = useState<"全部" | "80" | "60" | "40">("全部");
@@ -72,7 +74,8 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
     return [...publicRows, ...userRows];
   }, [trends]);
 
-  const filtered = useMemo(() => filterAndSortTrendRows(rows, { platform, confidence, query, heatThreshold, sortBy }), [confidence, heatThreshold, platform, query, rows, sortBy]);
+  const categories = useMemo(() => Array.from(new Set(rows.map(row => row.genre).filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-CN")), [rows]);
+  const filtered = useMemo(() => filterAndSortTrendRows(rows, { platform, confidence, category, query, heatThreshold, sortBy }), [category, confidence, heatThreshold, platform, query, rows, sortBy]);
 
   return <div className="space-y-4">
     <div className="flex min-w-0 flex-col gap-3 border-y border-foreground/15 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -81,6 +84,7 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
         <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索题材、标题或备注" className="w-full min-w-0 rounded-none lg:w-64" />
         <FilterSelect value={platform} onChange={value => setPlatform(value as typeof platform)} ariaLabel="平台筛选"><option value="全部">全部平台</option><option value="番茄">番茄</option><option value="抖音">抖音</option><option value="B站">B站</option><option value="我的标签">我的标签</option></FilterSelect>
         <FilterSelect value={confidence} onChange={value => setConfidence(value as typeof confidence)} ariaLabel="可信度筛选"><option value="全部">全部可信度</option><option value="高">高</option><option value="中">中</option><option value="低">低</option><option value="用户">用户标签</option></FilterSelect>
+        <FilterSelect value={category} onChange={setCategory} ariaLabel="小说分类筛选"><option value="全部">全部小说分类</option>{categories.map(item => <option key={item} value={item}>{item}</option>)}</FilterSelect>
         <FilterSelect value={heatThreshold} onChange={value => setHeatThreshold(value as typeof heatThreshold)} ariaLabel="指标阈值筛选"><option value="全部">全部指标</option><option value="80">≥ 80</option><option value="60">≥ 60</option><option value="40">≥ 40</option></FilterSelect>
         <FilterSelect value={sortBy} onChange={value => setSortBy(value as typeof sortBy)} ariaLabel="趋势排序"><option value="heat">指标优先</option><option value="date">最近采集</option></FilterSelect>
       </div>

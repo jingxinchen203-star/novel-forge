@@ -130,6 +130,36 @@ export const appRouter = router({
   }),
   trends: router({
     list: protectedProcedure.query(({ ctx }) => getTrends(ctx.user.id)),
+    refresh: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb(); if (!db) throw new Error("数据库不可用");
+      const existing = await getTrends(ctx.user.id);
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: "你是中文网络文学市场研究编辑。只输出 JSON，不要编造实时榜单或销量，不要虚构来源 URL。基于可验证的一般题材观察，生成最多 12 条适合中文网文创作参考的趋势标签。每条包含 label、category、heat（0-100）、note、source。明确这是研究参考，不是实时平台榜单。" },
+          { role: "user", content: `已有趋势：${existing.slice(0, 20).map(item => `${item.label}/${item.category}`).join("、") || "无"}\n请生成不同小说分类的趋势观察，覆盖都市、玄幻、悬疑、言情、历史、科幻等可能类别。JSON 格式：{"items":[{"label":"...","category":"...","heat":80,"note":"...","source":"公开题材研究"}]}` },
+        ],
+        response_format: { type: "json_object" },
+        maxTokens: 2400,
+      });
+      const content = result.choices?.[0]?.message?.content;
+      const raw = typeof content === "string" ? content : "";
+      let parsed: { items?: Array<{ label?: unknown; category?: unknown; heat?: unknown; note?: unknown; source?: unknown }> } = {};
+      try { parsed = JSON.parse(raw); } catch { throw new Error("趋势研究结果格式无效"); }
+      const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12).map(item => ({
+        userId: ctx.user.id,
+        label: String(item.label ?? "").trim().slice(0, 80),
+        category: String(item.category ?? "综合").trim().slice(0, 80),
+        heat: Math.max(0, Math.min(100, Number(item.heat) || 0)),
+        note: String(item.note ?? "").trim().slice(0, 4000),
+        source: String(item.source ?? "公开题材研究").trim().slice(0, 180),
+        collectedAt: new Date(),
+        automated: 1,
+      })).filter(item => item.label && item.note);
+      if (!items.length) throw new Error("没有得到可用的趋势记录");
+      await db.delete(trendTags).where(and(eq(trendTags.userId, ctx.user.id), eq(trendTags.automated, 1)));
+      await db.insert(trendTags).values(items);
+      return getTrends(ctx.user.id);
+    }),
     create: protectedProcedure.input(z.object({ label: z.string().trim().min(1).max(80), category: z.string().trim().min(1).max(80), heat: z.number().int().min(0).max(100), note: z.string().max(20000).default("") })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
       await db.insert(trendTags).values({ ...input, userId: ctx.user.id }); return getTrends(ctx.user.id);

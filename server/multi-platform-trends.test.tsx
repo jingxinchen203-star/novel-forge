@@ -23,6 +23,7 @@ describe("multi-platform trend library", () => {
     ];
     expect(filterAndSortTrendRows(rows, { platform: "番茄", confidence: "全部", query: "高武", heatThreshold: "全部", sortBy: "heat" }).map(row => row.id)).toEqual(["a"]);
     expect(filterAndSortTrendRows(rows, { platform: "全部", confidence: "低", query: "", heatThreshold: "40", sortBy: "date" }).map(row => row.id)).toEqual(["b"]);
+    expect(filterAndSortTrendRows(rows, { platform: "全部", confidence: "全部", category: "科幻", query: "", heatThreshold: "全部", sortBy: "date" }).map(row => row.id)).toEqual(["c"]);
     expect(filterAndSortTrendRows(rows, { platform: "全部", confidence: "全部", query: "", heatThreshold: "全部", sortBy: "date" }).map(row => row.id)).toEqual(["c", "a", "b"]);
   });
 
@@ -30,6 +31,7 @@ describe("multi-platform trend library", () => {
     const html = renderToStaticMarkup(React.createElement(TrendTable, { trends: [{ id: 7, label: "我的末世标签", category: "科幻", heat: 61, note: "用户备注" }] }));
     expect(html).toContain("筛选趋势观察");
     expect(html).toContain("aria-label=\"平台筛选\"");
+    expect(html).toContain("aria-label=\"小说分类筛选\"");
     expect(html).not.toContain("SelectContent");
     expect(html).toContain("番茄");
     expect(html).toContain("抖音");
