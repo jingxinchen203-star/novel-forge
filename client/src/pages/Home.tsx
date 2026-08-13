@@ -181,35 +181,61 @@ export default function Home() {
       <div className="mx-auto max-w-[1480px]">
         <header
           id="novel-forge-overview"
-          className="scroll-mt-20 grid gap-8 md:grid-cols-[1.15fr_.85fr] items-end mb-12 motion-rise"
+          className="scroll-mt-20 mb-16 motion-rise"
         >
-          <div>
-            <div className="mb-5 flex flex-wrap items-center gap-3">
-              <p className="text-[11px] uppercase tracking-[.35em] text-muted-foreground">
-                Novel Forge · 创作者控制台
+          <div className="studio-hero">
+            <div className="studio-hero__main">
+              <div className="studio-kicker">
+                <span>Novel Forge / Editorial Studio</span>
+                <span className="studio-kicker__line" />
+                <span>Issue 01 · 2026</span>
+              </div>
+              <div className="studio-hero__title-wrap">
+                <span className="studio-hero__index">01</span>
+                <h1 className="studio-hero__title">
+                  让故事
+                  <br />
+                  <em>先成形，</em>
+                  <br />
+                  再成为作品。
+                </h1>
+              </div>
+              <p className="studio-hero__dek">
+                一间为长篇小说准备的数字编辑室。把灵感变成结构，把结构推进成章节；AI 负责提案，你保留最后的判断。
               </p>
-              <span className="text-[10px] uppercase tracking-[.18em] text-accent border-b border-accent/40 pb-1">
-                OH Story method pack · v0.7.5
-              </span>
             </div>
-            <h1 className="font-display text-[clamp(3.6rem,8vw,8.5rem)] leading-[.88] tracking-[-.06em]">
-              写作，
-              <br />
-              <em className="font-normal">更接近作品。</em>
-            </h1>
+            <div className="studio-hero__side">
+              <div className="studio-loop">
+                <div className="studio-loop__head">
+                  <span>EDITORIAL LOOP</span>
+                  <span>工作方式</span>
+                </div>
+                <div className="studio-loop__steps">
+                  <div className="studio-loop__step">
+                    <span>01</span>
+                    <div><strong>先收集</strong><small>书名、题材、故事抓手</small></div>
+                  </div>
+                  <div className="studio-loop__step">
+                    <span>02</span>
+                    <div><strong>再组织</strong><small>世界、人物、冲突与章节</small></div>
+                  </div>
+                  <div className="studio-loop__step">
+                    <span>03</span>
+                    <div><strong>逐章推进</strong><small>AI 起草，你审核、修改、归档</small></div>
+                  </div>
+                </div>
+              </div>
+              <div className="studio-hero__stats">
+                <div><strong>{projects.data?.length ?? 0}</strong><span>作品档案</span></div>
+                <div><strong>{unread}</strong><span>未读提醒</span></div>
+                <div><strong>AI</strong><span>辅助提案</span></div>
+              </div>
+            </div>
           </div>
-          <div className="md:pb-2 max-w-md">
-            <p className="text-lg leading-8 text-muted-foreground">
-              把灵感、结构与持续产出放进同一间数字编辑室。AI
-              负责推进，你负责判断。
-            </p>
-            <div className="mt-7 flex items-center gap-6 text-xs uppercase tracking-[.2em]">
-              <span>{projects.data?.length ?? 0} 个项目</span>
-              <span className="h-px w-12 bg-foreground/30" />
-              <span>{unread} 条未读通知</span>
-            </div>
-            {notifications.data?.length ? (
-              <div className="mt-6 border-l-2 border-accent pl-4 space-y-2">
+          {notifications.data?.length ? (
+            <div className="studio-notifications">
+              <span className="studio-notifications__label">NOTES / 最新批注</span>
+              <div className="studio-notifications__items">
                 {notifications.data.slice(0, 2).map(n => (
                   <button
                     key={n.id}
@@ -218,60 +244,29 @@ export default function Home() {
                       if (n.projectId) setSelectedId(n.projectId);
                       markNotification.mutate({ id: n.id });
                     }}
-                    className="block text-left text-xs text-muted-foreground hover:text-foreground"
+                    className="studio-notifications__item"
                   >
-                    <span className="text-foreground">{n.title}</span> ·{" "}
-                    {n.message}
-                    {!n.readAt && (
-                      <span className="ml-2 text-accent">未读</span>
-                    )}
+                    <span>{n.title}</span><small>{n.message}{!n.readAt && " · 未读"}</small>
                   </button>
                 ))}
               </div>
-            ) : null}
-            {selectedNotification && (
-              <Card className="mt-5 rounded-none">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[.2em] text-muted-foreground">
-                        通知详情
-                      </p>
-                      <p className="font-display text-lg mt-2">
-                        {selectedNotification.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2 leading-6">
-                        {selectedNotification.message}
-                      </p>
-                    </div>
-                    <button
-                      className="text-xs text-muted-foreground"
-                      onClick={() => setSelectedNotification(null)}
-                    >
-                      关闭
-                    </button>
-                  </div>
-                  {selectedNotification.projectId && (
-                    <p className="text-xs text-accent mt-3">
-                      已定位到关联小说项目
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-            <div className="mt-7 grid grid-cols-2 gap-3">
-              <div className="editorial-note">
-                <span className="editorial-note__eyebrow">WRITING RHYTHM</span>
-                <strong>先情绪，后结构。</strong>
-                <span>每一章都留下可追读的推进力。</span>
-              </div>
-              <div className="editorial-note editorial-note--accent">
-                <span className="editorial-note__eyebrow">METHOD PACK</span>
-                <strong>OH Story · 0.7.5</strong>
-                <span>情绪目标、连续性与趋势验证。</span>
-              </div>
             </div>
-          </div>
+          ) : null}
+          {selectedNotification && (
+            <Card className="mt-5 rounded-none">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[.2em] text-muted-foreground">通知详情</p>
+                    <p className="font-display text-lg mt-2">{selectedNotification.title}</p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-6">{selectedNotification.message}</p>
+                  </div>
+                  <button className="text-xs text-muted-foreground" onClick={() => setSelectedNotification(null)}>关闭</button>
+                </div>
+                {selectedNotification.projectId && <p className="text-xs text-accent mt-3">已定位到关联小说项目</p>}
+              </CardContent>
+            </Card>
+          )}
         </header>
         <section
           id="novel-forge-workspace"
