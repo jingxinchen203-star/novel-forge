@@ -468,4 +468,4 @@
 - [x] 核对 novel-forge-cxf.pages.dev 与现有 CORS/OAuth/API 配置
 - [x] 更新允许来源、OAuth 回调和前端 API 地址配置
 - [x] 补充 Cloudflare GitHub Secrets 的逐项小白说明
-- [ ] 完成类型检查、测试、构建和 GitHub 同步
+- [x] 完成类型检查、测试、构建和 GitHub 同步
