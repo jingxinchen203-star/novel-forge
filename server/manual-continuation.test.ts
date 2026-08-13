@@ -29,5 +29,8 @@ describe("manual continuation and AI writing actions", () => {
     expect(home).toContain('field="conflicts"');
     expect(home).toContain('field="styleGuide"');
     expect(home).toContain("生成 30 章提案");
+    expect(home).toContain("disabled={saveDocs.isPending || generateDocument.isPending}");
+    expect(home).toContain("续写方式");
+    expect(home).toContain("自动续写已关闭");
   });
 });

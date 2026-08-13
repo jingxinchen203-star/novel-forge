@@ -11,6 +11,6 @@ export function StandaloneTrendPanel({ trends }: { trends: any[] }) {
 
 export function StandaloneModulePanel({ target, onCreate }: { target: string; onCreate: () => void }) {
   const title = target === "versions" ? "版本档案" : target === "schedule" ? "续写计划" : "创作工作台";
-  const description = target === "versions" ? "版本档案会按小说项目归档。请先建立或选择一部小说。" : target === "schedule" ? "自动续写计划需要绑定具体小说项目。请先建立或选择一部小说。" : "先建立一部小说，再进入创作工作台。";
+  const description = target === "versions" ? "版本档案会按小说项目归档。请先建立或选择一部小说。" : target === "schedule" ? "续写现在由你在正文编辑中手动触发 AI。请先建立或选择一部小说。" : "先建立一部小说，再进入创作工作台。";
   return <div className="empty-manuscript min-h-[420px] border border-dashed border-foreground/25 p-6 md:p-10 motion-rise"><div className="empty-manuscript__top"><span className="folio-stamp">NF</span><span className="font-mono text-[10px] tracking-[.18em] text-muted-foreground">{title.toUpperCase()}</span><span className="empty-manuscript__rule" /></div><div className="empty-manuscript__body"><div className="text-center"><BookOpen className="mx-auto h-9 w-9 mb-5" strokeWidth={1.5} /><h2 className="font-display text-3xl md:text-4xl mb-3">{title}</h2><p className="max-w-md text-muted-foreground leading-7 mb-7">{description}</p><Button onClick={onCreate} className="rounded-none"><Plus className="mr-2 h-4 w-4" />建立首个项目</Button></div></div></div>;
 }

@@ -813,7 +813,7 @@ function ProjectWorkspace({
         />
         <Metric label="当前正文" value={`${wordCount.toLocaleString()} 字`} />
         <Metric label="章节数" value={`${chapters.length} 章`} />
-        <Metric label="自动续写" value="未设置" />
+        <Metric label="续写方式" value="手动触发" />
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="rounded-none bg-transparent border-b w-full justify-start gap-8 h-12">
@@ -962,6 +962,7 @@ function ProjectWorkspace({
               />
               <Button
                 className="rounded-none md:col-span-2 w-fit"
+                disabled={saveDocs.isPending || generateDocument.isPending}
                 onClick={() =>
                   saveDocs.mutate({ projectId: project.id, ...docs, outline })
                 }
