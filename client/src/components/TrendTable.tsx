@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { ExternalLink, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PUBLIC_TREND_OBSERVATIONS, type TrendConfidence, type TrendPlatform } from "@shared/multiPlatformTrends";
 
@@ -33,6 +32,10 @@ export function filterAndSortTrendRows(rows: TrendRow[], filters: TrendFilters) 
     const matchesHeat = filters.heatThreshold === "全部" || (row.metricValue !== null && row.metricValue >= Number(filters.heatThreshold));
     return matchesPlatform && matchesConfidence && matchesQuery && matchesHeat;
   }).sort((a, b) => filters.sortBy === "date" ? b.collectedAt.localeCompare(a.collectedAt) : (b.metricValue ?? -1) - (a.metricValue ?? -1));
+}
+
+function FilterSelect({ value, onChange, ariaLabel, children }: { value: string; onChange: (value: string) => void; ariaLabel: string; children: React.ReactNode }) {
+  return <select aria-label={ariaLabel} value={value} onChange={event => onChange(event.target.value)} className="h-9 rounded-none border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]">{children}</select>;
 }
 
 function formatMetric(value: number | null, label: string) {
@@ -73,10 +76,10 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
       <div className="flex items-center gap-2 text-xs uppercase tracking-[.18em] text-muted-foreground"><SlidersHorizontal className="h-4 w-4" />筛选趋势观察</div>
       <div className="grid gap-2 sm:grid-cols-2 lg:flex">
         <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索题材、标题或备注" className="rounded-none lg:w-64" />
-        <Select value={platform} onValueChange={value => setPlatform(value as typeof platform)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="平台" /></SelectTrigger><SelectContent><SelectItem value="全部">全部平台</SelectItem><SelectItem value="番茄">番茄</SelectItem><SelectItem value="抖音">抖音</SelectItem><SelectItem value="B站">B站</SelectItem><SelectItem value="我的标签">我的标签</SelectItem></SelectContent></Select>
-        <Select value={confidence} onValueChange={value => setConfidence(value as typeof confidence)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="可信度" /></SelectTrigger><SelectContent><SelectItem value="全部">全部可信度</SelectItem><SelectItem value="高">高</SelectItem><SelectItem value="中">中</SelectItem><SelectItem value="低">低</SelectItem><SelectItem value="用户">用户标签</SelectItem></SelectContent></Select>
-        <Select value={heatThreshold} onValueChange={value => setHeatThreshold(value as typeof heatThreshold)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="指标阈值" /></SelectTrigger><SelectContent><SelectItem value="全部">全部指标</SelectItem><SelectItem value="80">≥ 80</SelectItem><SelectItem value="60">≥ 60</SelectItem><SelectItem value="40">≥ 40</SelectItem></SelectContent></Select>
-        <Select value={sortBy} onValueChange={value => setSortBy(value as typeof sortBy)}><SelectTrigger className="rounded-none lg:w-36"><SelectValue placeholder="排序" /></SelectTrigger><SelectContent><SelectItem value="heat">指标优先</SelectItem><SelectItem value="date">最近采集</SelectItem></SelectContent></Select>
+        <FilterSelect value={platform} onChange={value => setPlatform(value as typeof platform)} ariaLabel="平台筛选"><option value="全部">全部平台</option><option value="番茄">番茄</option><option value="抖音">抖音</option><option value="B站">B站</option><option value="我的标签">我的标签</option></FilterSelect>
+        <FilterSelect value={confidence} onChange={value => setConfidence(value as typeof confidence)} ariaLabel="可信度筛选"><option value="全部">全部可信度</option><option value="高">高</option><option value="中">中</option><option value="低">低</option><option value="用户">用户标签</option></FilterSelect>
+        <FilterSelect value={heatThreshold} onChange={value => setHeatThreshold(value as typeof heatThreshold)} ariaLabel="指标阈值筛选"><option value="全部">全部指标</option><option value="80">≥ 80</option><option value="60">≥ 60</option><option value="40">≥ 40</option></FilterSelect>
+        <FilterSelect value={sortBy} onChange={value => setSortBy(value as typeof sortBy)} ariaLabel="趋势排序"><option value="heat">指标优先</option><option value="date">最近采集</option></FilterSelect>
       </div>
     </div>
     <div className="overflow-x-auto border border-foreground/15">

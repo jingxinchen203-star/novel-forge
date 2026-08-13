@@ -188,3 +188,9 @@
 - [x] 在趋势表格中恢复用户标签编辑和删除能力，避免原有标签维护回归（项目内表格接入 updateTrend/removeTrend）
 - [x] 增加观察指标/热度阈值筛选，明确无数值样本的处理方式（无数值样本在阈值筛选下排除）
 - [x] 补充趋势表格行为测试，覆盖关键词、平台、可信度、热度筛选和排序（filterAndSortTrendRows；17 个测试文件、47 个测试通过）
+
+# ResizeObserver 错误修复 TODO
+
+- [x] 定位 #trends 页面 ResizeObserver loop 的具体触发组件和布局变化（趋势表格筛选控件使用 Radix Select 浮层定位器，初始化时触发浏览器循环通知）
+- [x] 修复导致 ResizeObserver 重复通知的组件更新或尺寸反馈循环（趋势筛选改用原生 select，避免浮层 ResizeObserver）
+- [x] 增加运行时回归测试并完成 pnpm check、pnpm test、pnpm build 验证（17 个测试文件、47 个测试通过；含原生筛选控件回归断言）

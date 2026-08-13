@@ -29,6 +29,8 @@ describe("multi-platform trend library", () => {
   it("renders the table with filters, public sources and user labels", () => {
     const html = renderToStaticMarkup(React.createElement(TrendTable, { trends: [{ id: 7, label: "我的末世标签", category: "科幻", heat: 61, note: "用户备注" }] }));
     expect(html).toContain("筛选趋势观察");
+    expect(html).toContain("aria-label=\"平台筛选\"");
+    expect(html).not.toContain("SelectContent");
     expect(html).toContain("番茄");
     expect(html).toContain("抖音");
     expect(html).toContain("B站");
