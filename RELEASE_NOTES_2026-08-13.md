@@ -1,6 +1,6 @@
 # Novel Forge — Release Notes
 
-**版本标识：** `208deff8b37ebb227af8cce344fd19d38a3b81e4`  
+**版本标识：** `v1.0.0`（发布目标提交将在 Release 创建前确定）
 **发布日期：** 2026-08-13  
 **仓库：** [jingxinchen203-star/novel-forge](https://github.com/jingxinchen203-star/novel-forge)  
 **部署域名：** [novelforge-gytesvpi.manus.space](https://novelforge-gytesvpi.manus.space)
@@ -62,6 +62,14 @@ GitHub Actions 的最新成功运行包含以下作业步骤：依赖安装、�
 需要特别说明，仓库内容扫描没有发现已提交的明显敏感信息，但 GitHub 平台侧的 Secret Scanning 与 Code Scanning 结果由于当前 API 权限无法读取；Dependabot 则明确处于未启用状态。建议仓库所有者在 GitHub Settings → Security 中手动确认 Secret scanning、Push protection、Dependabot alerts 和 Code scanning 的启用状态。
 
 仓库中仍存在少量较大的源文件，例如 `client/src/pages/Home.tsx` 和 `server/routers.ts`，它们属于源码而非运行产物，不构成敏感信息泄露，但后续可按功能拆分以改善维护性。
+
+## 性能与依赖审查
+
+本次审查重点覆盖依赖树、静态导入、生产构建产物、查询 hook 数量和大型源码文件。确认并移除了六个未被源码、配置或构建链路使用的生产依赖：`@aws-sdk/client-s3`、`@aws-sdk/s3-request-presigner`、`@hookform/resolvers`、`framer-motion`、`next-themes` 和 `tailwindcss-animate`。依赖清理后，类型检查、66 项测试和生产构建均通过；`depcheck` 不再报告未使用的生产依赖。
+
+当前生产前端产物主要由 vendor chunk、UI vendor chunk、Home 页面 chunk 和基础入口组成。最大 vendor chunk 约为 339 KB，UI vendor chunk 约为 155 KB，Home 页面 chunk 约为 77 KB；现有 Vite manualChunks 已将 UI/React 相关依赖与通用 vendor 分开。性能上最值得继续关注的是 `client/src/pages/Home.tsx` 体积较大、主工作台承载较多页面逻辑，以及部分辅助 UI 组件仍随模板保留。它们目前没有造成构建失败，但后续可按模块进一步拆分并采用按页面懒加载。
+
+静态依赖分析还标记了若干开发依赖，但它们可能由模板、构建工具、类型系统或未来 UI 组件间接使用，因此本次没有贸然删除。尤其是 Tailwind、PostCSS、Vite 插件和 UI 组件相关包，应在单独的模板依赖整理任务中逐项删除并进行完整构建验证。
 
 ## 已知限制
 
