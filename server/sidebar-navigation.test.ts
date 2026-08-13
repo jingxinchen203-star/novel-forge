@@ -53,6 +53,8 @@ describe("sidebar navigation", () => {
       expect(layoutSource).toContain(`target: "${target}"`);
     }
     expect(layoutSource).toContain("href={`#${item.target}`}");
+    expect(layoutSource).toContain("navigateToTarget(item.target)");
+    expect(layoutSource).toContain("window.dispatchEvent(new Event(\"hashchange\"))");
     expect(layoutSource).toContain("isActive={activeTarget === item.target}");
     expect(layoutSource).not.toContain("location === item.path");
     expect(homeSource).toContain("readNavTarget(currentHash())");

@@ -230,3 +230,9 @@
 
 - [x] 项目深链接无效回退时保留当前合法 hash 模块，不强制覆盖为 workspace
 - [x] 增加回退场景的 hash 保留测试，并完成 check、test、build 验证（18 个测试文件、53 个测试通过）
+
+# 趋势库打开问题修复
+
+- [x] 定位题材趋势库点击后无法打开的导航、hash 或渲染原因（侧边栏仅依赖默认 anchor，部分状态下未可靠触发 Home 的 hashchange 监听）
+- [x] 修复题材趋势库入口与面板打开流程（显式 pushState、activeTarget 同步并派发 hashchange）
+- [x] 增加趋势库打开回归测试并完成 check、test、build 验证（18 个测试文件、53 个测试通过）
