@@ -187,6 +187,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        // Keep asset URLs stable across deploys so cached index.html cannot reference missing hashed scripts.
+        entryFileNames: "assets/[name].js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
         // Keep browser entry/chunk URLs stable across deploys. The hosting edge
         // can cache index.html and an old hashed URL independently; when that
         // happens a missing JS URL falls through to index.html and React never
