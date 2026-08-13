@@ -35,12 +35,12 @@ jobs:
       - name: Build Pages frontend
         env:
           VITE_API_BASE_URL: https://novelforge-gytesvpi.manus.space
-        run: pnpm build:pages
+        run: pnpm build:cloudflare
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/public --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

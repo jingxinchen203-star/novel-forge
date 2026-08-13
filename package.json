@@ -7,6 +7,7 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "NODE_ENV=production vite build && NODE_ENV=production esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:pages": "NODE_ENV=production vite build",
+    "build:cloudflare": "pnpm build:pages && rm -rf dist/assets && cp -R dist/public/assets dist/assets && cp dist/public/index.html dist/index.html && cp dist/public/_redirects dist/_redirects",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",

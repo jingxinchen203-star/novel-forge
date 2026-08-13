@@ -2,7 +2,7 @@
 
 ## 适配结论
 
-本仓库现在提供 **Cloudflare Pages 前端部署路径**。`pnpm build:pages` 只构建 Vite 静态前端，产物目录为 `dist/public`；`wrangler.toml` 已声明相同的 Pages 输出目录，适合在 Cloudflare Pages 中导入 GitHub 仓库，或通过 Wrangler 直接上传。
+本仓库现在提供 **Cloudflare Pages 前端部署路径**。`pnpm build:cloudflare` 会先执行 Vite 构建，再把 `index.html`、`assets/` 和 `_redirects` 复制到根目录 `dist`。这样既保留项目原有的 `dist/public` 结构，也兼容 Cloudflare Pages 从 GitHub 导入时默认寻找根目录 `index.html` 的教程流程。
 
 需要特别区分：Novel Forge 不是纯静态网站。项目的 Express、tRPC、Manus OAuth、MySQL/Drizzle、Heartbeat、AI 生成和服务端草稿清理仍属于后端能力，不能仅靠 Pages 静态文件自动迁移。若前端部署到 Cloudflare Pages，必须让 `/api/*` 继续指向一个可访问的后端服务，并将前端的 API 地址配置为该后端地址；否则页面可以打开，但登录、项目管理和 AI 功能不会工作。完整后端迁移到 Cloudflare Workers 需要另行改造 Express、OAuth、数据库驱动和 Manus 专用 SDK，本次没有擅自进行不可逆迁移。
 
@@ -13,8 +13,8 @@
 | 配置项                 | 值                 |
 | ---------------------- | ------------------ |
 | Framework preset       | Vite 或 None       |
-| Build command          | `pnpm build:pages` |
-| Build output directory | `dist/public`      |
+| Build command | `pnpm build:cloudflare` |
+| Build output directory | `dist` |
 | Node.js version        | `22`               |
 | Root directory         | `/`                |
 
@@ -30,6 +30,8 @@ Cloudflare 官方 Vite 指南使用构建命令和静态输出目录部署 Vite 
 | Actions Secret `CLOUDFLARE_ACCOUNT_ID`      | Cloudflare 账户 ID                          |
 | Actions Variable `CLOUDFLARE_PAGES_PROJECT` | Pages 项目名称，例如 `novel-forge-cxf` |
 | Actions Variable `VITE_API_BASE_URL`（可选） | 后端地址；当前 workflow 已直接使用 `https://novelforge-gytesvpi.manus.space` |
+
+如果你在 Cloudflare 面板直接连接 GitHub，而不是点击仓库中的手动 workflow，请使用相同的 Build command `pnpm build:cloudflare` 和 Build output directory `dist`。若构建设置留空或输出目录仍填写 `dist/public`，就可能出现域名存在但首页 404 的情况。
 
 配置后，在 GitHub Actions 中手动运行 **Cloudflare Pages** workflow。该 workflow 默认只允许手动触发，避免在尚未配置 Cloudflare 凭据时让主分支 CI 失败。Cloudflare 官方持续集成指南同样要求使用 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN` 和 Wrangler Pages 部署命令。[2]
 

@@ -469,3 +469,10 @@
 - [x] 更新允许来源、OAuth 回调和前端 API 地址配置
 - [x] 补充 Cloudflare GitHub Secrets 的逐项小白说明
 - [x] 完成类型检查、测试、构建和 GitHub 同步
+
+# Cloudflare Pages 404 排查
+
+- [x] 核对用户教程流程与 Pages 当前响应
+- [x] 定位 GitHub 导入后的构建命令或输出目录问题
+- [x] 修正仓库部署配置并验证 Pages 产物
+- [x] 给出 Cloudflare 面板中可直接照做的设置
