@@ -181,6 +181,12 @@ export default defineConfig({
   },
   server: {
     host: true,
+    hmr: {
+      // The preview is served through an HTTPS reverse proxy. Let the browser
+      // connect back through the public origin instead of localhost:5173.
+      protocol: "wss",
+      clientPort: 443,
+    },
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",

@@ -236,3 +236,9 @@
 - [x] 定位题材趋势库点击后无法打开的导航、hash 或渲染原因（侧边栏仅依赖默认 anchor，部分状态下未可靠触发 Home 的 hashchange 监听）
 - [x] 修复题材趋势库入口与面板打开流程（显式 pushState、activeTarget 同步并派发 hashchange）
 - [x] 增加趋势库打开回归测试并完成 check、test、build 验证（18 个测试文件、53 个测试通过）
+
+# Vite HMR WebSocket 修复
+
+- [x] 检查 Vite server、HMR 配置与开发服务日志，确认 WebSocket 失败原因（HTTPS 代理下客户端错误回连 localhost:5173）
+- [x] 修复开发环境 HMR WebSocket 连接配置并重启服务（WSS + clientPort 443）
+- [x] 完成浏览器控制台、check、test、build 验证并保存检查点（19 个测试文件、54 个测试通过；浏览器重载后无新增控制台输出）
