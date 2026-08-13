@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parse as parseCookie } from "cookie";
-import { createHeartbeatJob, deleteHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
+import { deleteHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { invokeLLM } from "./_core/llm";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -10,7 +10,6 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, getProject, getProjectDocs, getProjects, getChapters, getTrends, getNotifications, chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, writingSchedules } from "./db";
 import { buildOhStorySystemPrompt, OH_STORY_METHOD } from "@shared/ohStoryMethod";
 import { releasePersistentGenerationLock, reserveGenerationSlot, TEXT_LIMITS } from "./_core/security";
-import { createScheduleWithCleanup } from "./scheduleLifecycle";
 
 const projectInput = z.object({ title: z.string().trim().min(1).max(180), genre: z.string().trim().min(1).max(120), synopsis: z.string().max(TEXT_LIMITS.projectSynopsis).default(""), targetWords: z.number().int().min(1000).max(500000) });
 
@@ -172,6 +171,32 @@ export const appRouter = router({
         return getChapters(ctx.user.id, input.projectId);
       } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
     }),
+    generateDocument: protectedProcedure.input(z.object({ projectId: z.number(), field: z.enum(["worldSetting", "characters", "conflicts", "styleGuide"]), currentValue: z.string().max(TEXT_LIMITS.document).default(""), outline: z.string().max(TEXT_LIMITS.outline).default("") })).mutation(async ({ ctx, input }) => {
+      const project = await requireProject(ctx.user.id, input.projectId);
+      if (!(await reserveGenerationSlot(ctx.user.id, input.projectId))) throw new Error("生成请求过于频繁或项目正在生成");
+      try {
+        const docs = await getProjectDocs(ctx.user.id, input.projectId);
+        const labels = { worldSetting: "世界背景", characters: "人物设定", conflicts: "核心冲突", styleGuide: "风格指令" } as const;
+        return await textFromLLM([
+          { role: "system", content: "你是中文网络文学策划编辑。只输出可直接放入策划文档的中文内容，不要解释过程，不要虚构外部资料；内容要具体、可执行，并与已有设定保持一致。" },
+          { role: "user", content: `书名：${project.title}\n题材：${project.genre}\n简介：${project.synopsis}\n章节大纲：${input.outline || docs?.outline || "未填写"}\n已有世界背景：${docs?.worldSetting ?? ""}\n已有人物设定：${docs?.characters ?? ""}\n已有核心冲突：${docs?.conflicts ?? ""}\n已有风格指令：${docs?.styleGuide ?? ""}\n目标栏位：${labels[input.field]}\n当前内容：${input.currentValue}\n请生成或完善“${labels[input.field]}”，保留作者已有事实，输出分段清晰的内容。` },
+        ]);
+      } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
+    }),
+    continueChapter: protectedProcedure.input(z.object({ projectId: z.number(), previousChapterId: z.number().optional(), targetWords: z.number().int().min(500).max(20000).default(3000), style: z.string().max(TEXT_LIMITS.style).default("") })).mutation(async ({ ctx, input }) => {
+      const project = await requireProject(ctx.user.id, input.projectId); const db = await getDb(); if (!db) throw new Error("数据库不可用");
+      const previous = input.previousChapterId ? await requireChapter(ctx.user.id, input.projectId, input.previousChapterId) : (await getChapters(ctx.user.id, input.projectId)).at(-1);
+      const chapterNumber = (previous?.chapterNumber ?? 0) + 1;
+      const existing = (await db.select().from(chapters).where(and(eq(chapters.projectId, input.projectId), eq(chapters.userId, ctx.user.id), eq(chapters.chapterNumber, chapterNumber))).limit(1))[0];
+      if (existing) throw new Error("下一章已存在，请在正文编辑中选择并修改现有章节");
+      if (!(await reserveGenerationSlot(ctx.user.id, input.projectId))) throw new Error("生成请求过于频繁或项目正在生成");
+      try {
+        const docs = await getProjectDocs(ctx.user.id, input.projectId); const outline = previous ? `承接第${previous.chapterNumber}章《${previous.title}》，推进未解决冲突并在章末留下新的阅读钩子。` : "建立开篇冲突，完成主角首次选择。";
+        const body = await textFromLLM([{ role: "system", content: chapterSystemPrompt() }, { role: "user", content: `项目：${project.title}\n题材：${project.genre}\n世界观：${docs?.worldSetting ?? ""}\n人物：${docs?.characters ?? ""}\n上一章正文：${previous?.body?.slice(-4000) ?? "无"}\n本章方向：${outline}\n风格：${input.style}\n目标字数：${input.targetWords}` }]);
+        await db.insert(chapters).values({ projectId: input.projectId, userId: ctx.user.id, chapterNumber, title: `第${chapterNumber}章`, outline, body, targetWords: input.targetWords, status: "draft" });
+        return getChapters(ctx.user.id, input.projectId);
+      } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
+    }),
     saveChapter: protectedProcedure.input(z.object({ id: z.number(), title: z.string().trim().min(1).max(180), outline: z.string().max(TEXT_LIMITS.outline), body: z.string().max(TEXT_LIMITS.chapterBody), targetWords: z.number().int().min(500).max(20000) })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用"); const chapter = (await db.select().from(chapters).where(and(eq(chapters.id, input.id), eq(chapters.userId, ctx.user.id))).limit(1))[0]; if (!chapter) throw new Error("章节不存在或无权访问"); await db.update(chapters).set({ title: input.title, outline: input.outline, body: input.body, targetWords: input.targetWords, status: "revised" }).where(and(eq(chapters.id, input.id), eq(chapters.projectId, chapter.projectId), eq(chapters.userId, ctx.user.id))); return { success: true };
     }),
@@ -190,20 +215,14 @@ export const appRouter = router({
   notifications: router({ list: protectedProcedure.query(({ ctx }) => getNotifications(ctx.user.id)), markRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => { const db = await getDb(); if (!db) throw new Error("数据库不可用"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id))); return { success: true }; }) }),
   schedules: router({
     list: protectedProcedure.query(async ({ ctx }) => { const db = await getDb(); if (!db) return []; return db.select().from(writingSchedules).where(eq(writingSchedules.userId, ctx.user.id)); }),
-    create: protectedProcedure.input(z.object({ projectId: z.number(), cronExpression: z.string().regex(/^\\d+ \\d+ \\d+ \\* \\* \\*$/).max(80), timezone: z.string().trim().min(1).max(80).default("UTC") })).mutation(async ({ ctx, input }) => {
-      const db = await getDb(); if (!db) throw new Error("数据库不可用"); const project = await requireProject(ctx.user.id, input.projectId); const sessionToken = getSessionToken(ctx.req);
-      return createScheduleWithCleanup({
-        sessionToken,
-        create: () => createHeartbeatJob({ name: `novel-forge-${project.id}`, cron: input.cronExpression, path: "/api/scheduled/continueNovel", description: `自动续写《${project.title}》` }, sessionToken),
-        persist: async job => { await db.insert(writingSchedules).values({ projectId: project.id, userId: ctx.user.id, cronExpression: input.cronExpression, timezone: input.timezone, scheduleCronTaskUid: job.taskUid }); },
-        remove: deleteHeartbeatJob,
-      });
-    }),
+    create: protectedProcedure.input(z.object({ projectId: z.number(), cronExpression: z.string().regex(/^\\d+ \\d+ \\d+ \\* \\* \\*$/).max(80), timezone: z.string().trim().min(1).max(80).default("UTC") })).mutation(async () => { throw new Error("自动续写已关闭，请在正文编辑中手动点击 AI 续写"); }),
+    /* Legacy schedule records remain removable, but they can no longer be created or resumed. */
     setEnabled: protectedProcedure.input(z.object({ id: z.number(), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
       const schedule = (await db.select().from(writingSchedules).where(and(eq(writingSchedules.id, input.id), eq(writingSchedules.userId, ctx.user.id))).limit(1))[0];
       if (!schedule || !schedule.scheduleCronTaskUid) throw new Error("计划不存在或无权访问");
-      await updateHeartbeatJob(schedule.scheduleCronTaskUid, { enable: input.enabled }, getSessionToken(ctx.req));
+      if (input.enabled) throw new Error("自动续写已关闭，请在正文编辑中手动点击 AI 续写");
+      await updateHeartbeatJob(schedule.scheduleCronTaskUid, { enable: false }, getSessionToken(ctx.req));
       await db.update(writingSchedules).set({ enabled: input.enabled ? 1 : 0, lockAt: null }).where(and(eq(writingSchedules.id, input.id), eq(writingSchedules.userId, ctx.user.id)));
       return { success: true, enabled: input.enabled };
     }),

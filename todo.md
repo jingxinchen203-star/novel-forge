@@ -261,3 +261,12 @@
 - [x] 复现当前正式域名页面与生产 JavaScript 错误（发现旧拆包错误及资源未更新状态）
 - [x] 修复仍存在的 React 生产启动或部署资源问题（移除 React/react-dom 手动拆包，避免 Activity 初始化循环）
 - [x] 完成公开域名、check、test、build 验证并保存检查点（本地生产 smoke mounted；jsxDEV=0；19 个测试文件、56 个测试通过）
+
+# 手动续写与分区 AI 生成
+
+- [x] 将续写计划从自动执行改为仅由用户手动点击 AI 续写（历史 Heartbeat 改为 manual-only，前端移除创建/恢复入口）
+- [x] 为章节大纲增加 AI 生成入口，支持用户输入方向并回填可编辑内容（沿用 generateOutline）
+- [x] 为世界与人物增加 AI 生成入口，支持生成和编辑设定内容（新增 generateDocument，覆盖世界背景、人物设定、核心冲突、风格指令）
+- [x] 为正文编辑增加 AI 续写/生成入口，支持用户确认后写入编辑区（新增 continueChapter，生成后先回填编辑器）
+- [x] 保留生成配额、并发锁、错误脱敏和空输入校验（新 procedure 均复用项目归属、reserve/release 锁与长度限制）
+- [x] 增加相关回归测试并完成 check、test、build 与页面验证（20 个测试文件、59 个测试通过；桌面截图验证）

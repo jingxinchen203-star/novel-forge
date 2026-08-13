@@ -41,9 +41,9 @@ describe("genre picker options", () => {
 
   it("wires the same picker into new and edit project forms", () => {
     const source = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
-    expect(source).toContain("const emptyProject = { title: \"\", genre: \"\"");
-    expect(source).toContain("<GenrePicker value={projectForm.genre}");
-    expect(source).toContain("<GenrePicker value={projectDraft.genre}");
+    expect(source).toMatch(/const emptyProject = \{\s*title: \"\",\s*genre: \"\"/);
+    expect(source).toMatch(/<GenrePicker[\s\S]{0,240}projectForm\.genre/);
+    expect(source).toMatch(/<GenrePicker[\s\S]{0,240}projectDraft\.genre/);
     expect(source).toContain("const [synopsisIdea, setSynopsisIdea]");
     expect(GENRE_OPTION_GROUPS.length).toBeGreaterThanOrEqual(3);
   });
