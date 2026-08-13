@@ -65,6 +65,11 @@ const callForge = async <T>(
   body: Record<string, unknown>,
   userSession: string
 ): Promise<T> => {
+  // Check authentication before resolving optional service configuration so
+  // unauthenticated mutations always fail closed with a stable error code.
+  if (!userSession) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Heartbeat user session required" });
+  }
   const endpoint = buildEndpoint(rpc);
   const headers: Record<string, string> = {
     accept: "application/json",
@@ -74,9 +79,6 @@ const callForge = async <T>(
   };
   // Heartbeat mutations must execute as the authenticated end user.
   // Never fall back to the project owner when the session is absent.
-  if (!userSession) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Heartbeat user session required" });
-  }
   headers["x-manus-user-session"] = userSession;
 
   let response: Response;
