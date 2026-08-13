@@ -63,4 +63,30 @@ describe("persistent generation usage", () => {
     await releasePersistentGenerationLock(11, 22);
     expect(dbMock.update).toHaveBeenCalledTimes(1);
   });
+
+  it("allows only one of two concurrent callers to reserve the same shared row", async () => {
+    let activeUntil: Date | null = null;
+    const updateWhere = vi.fn(async () => {
+      if (activeUntil && activeUntil.getTime() > Date.now()) return [{ affectedRows: 0 }];
+      activeUntil = new Date(Date.now() + 60_000);
+      return [{ affectedRows: 1 }];
+    });
+    const updateSet = vi.fn(() => ({ where: updateWhere }));
+    const insertDuplicate = vi.fn(async () => undefined);
+    const insertValues = vi.fn(() => ({ onDuplicateKeyUpdate: insertDuplicate }));
+    dbMock = {
+      insert: vi.fn(() => ({ values: insertValues })),
+      update: vi.fn(() => ({ set: updateSet })),
+      updateWhere,
+      updateSet,
+      insertDuplicate,
+    };
+
+    const results = await Promise.all([
+      reserveGenerationSlot(11, 22),
+      reserveGenerationSlot(11, 22),
+    ]);
+    expect(results.sort()).toEqual([false, true]);
+    expect(updateWhere).toHaveBeenCalledTimes(2);
+  });
 });

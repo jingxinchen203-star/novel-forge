@@ -19,7 +19,7 @@ const menuItems = [
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { loading, user } = useAuth();
+  const { loading, user, error } = useAuth();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return 280;
     const stored = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   useEffect(() => { try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth)); } catch { /* private mode or blocked storage */ } }, [sidebarWidth]);
   if (loading) return <DashboardLayoutSkeleton />;
-  if (!user) return <div className="min-h-screen editorial-grid flex items-center justify-center px-6"><div className="max-w-md text-center"><p className="text-xs uppercase tracking-[.3em] text-muted-foreground mb-5">Novel Forge / Private Studio</p><h1 className="font-display text-5xl mb-4">你的下一本书，值得更好的编辑室。</h1><p className="text-muted-foreground leading-7 mb-8">登录后管理项目设定、章节生成和版本档案。</p><Button onClick={() => startLogin()} className="rounded-none px-8">进入编辑室</Button></div></div>;
+  if (!user) return <div className="min-h-screen editorial-grid flex items-center justify-center px-6"><div className="max-w-md text-center"><p className="text-xs uppercase tracking-[.3em] text-muted-foreground mb-5">Novel Forge / Private Studio</p><h1 className="font-display text-5xl mb-4">你的下一本书，值得更好的编辑室。</h1><p className="text-muted-foreground leading-7 mb-8">登录后管理项目设定、章节生成和版本档案。</p>{error && <p role="status" className="mb-5 text-sm leading-6 text-amber-700">登录验证未完成或会话已失效，请检查浏览器 Cookie 与人机验证后重试。</p>}<Button onClick={() => startLogin()} className="rounded-none px-8">{error ? "重新登录" : "进入编辑室"}</Button></div></div>;
   return <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider>;
 }
 

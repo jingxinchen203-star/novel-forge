@@ -56,6 +56,20 @@ const emptyDocs = {
   styleGuide: "克制、细腻、具有连续追读钩子的中文网文叙事。",
 };
 
+function getMutationErrorMessage(error: { message?: string }) {
+  const message = error.message ?? "";
+  if (message.includes("ai_generation_failed")) {
+    return "AI 暂时无法生成，请稍后重试；当前编辑内容没有被覆盖。";
+  }
+  if (message.includes("生成请求过于频繁") || message.includes("项目正在生成")) {
+    return "当前项目正在生成或请求过于频繁，请稍后再试。";
+  }
+  if (message.includes("UNAUTHORIZED") || message.includes("未登录")) {
+    return "登录状态已失效，请重新登录后再继续。";
+  }
+  return message || "操作未完成，请稍后重试。";
+}
+
 export default function Home() {
   const utils = trpc.useUtils();
   const projects = trpc.projects.list.useQuery();
@@ -134,14 +148,14 @@ export default function Home() {
       setSynopsisIdea("");
       toast.success("项目已建立");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const optimizeSynopsis = trpc.projects.optimizeSynopsis.useMutation({
     onSuccess: value => {
       setProjectForm(current => ({ ...current, synopsis: value }));
       toast.success("简介已优化，可继续修改");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const remove = trpc.projects.remove.useMutation({
     onSuccess: () => {
@@ -149,11 +163,11 @@ export default function Home() {
       utils.projects.list.invalidate();
       toast.success("项目已移除");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const markNotification = trpc.notifications.markRead.useMutation({
     onSuccess: () => utils.notifications.list.invalidate(),
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const unread = notifications.data?.filter(n => !n.readAt).length ?? 0;
   const wordCount = useMemo(
@@ -501,7 +515,7 @@ function ProjectWorkspace({
       utils.workspace.get.invalidate({ projectId: project.id });
       toast.success("项目资料已更新");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const [editingProject, setEditingProject] = useState(false);
   const [projectDraft, setProjectDraft] = useState({
@@ -532,7 +546,7 @@ function ProjectWorkspace({
       });
       toast.success("章节大纲已生成，可继续编辑");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const handleGenerateOutline = () => {
     const cleanedDirection = normalizeStoryDirection(direction);
@@ -555,35 +569,35 @@ function ProjectWorkspace({
       schedules.refetch();
       toast.success("续写计划状态已更新");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const scheduleRemove = trpc.schedules.remove.useMutation({
     onSuccess: () => {
       schedules.refetch();
       toast.success("续写计划已删除");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const createTrend = trpc.trends.create.useMutation({
     onSuccess: () => {
       utils.trends.list.invalidate();
       toast.success("趋势标签已加入");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const removeTrend = trpc.trends.remove.useMutation({
     onSuccess: () => {
       utils.trends.list.invalidate();
       toast.success("趋势标签已删除");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const updateTrend = trpc.trends.update.useMutation({
     onSuccess: () => {
       utils.trends.list.invalidate();
       toast.success("趋势标签已更新");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const [newTrend, setNewTrend] = useState({
     label: "",
@@ -597,7 +611,7 @@ function ProjectWorkspace({
       utils.workspace.versions.invalidate();
       toast.success("章节已保存");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const generateChapter = trpc.workspace.generateChapter.useMutation({
     onSuccess: value => {
@@ -619,7 +633,7 @@ function ProjectWorkspace({
       setDocs((current: typeof emptyDocs) => ({ ...current, [variables.field]: value }));
       toast.success(`${variables.field === "worldSetting" ? "世界背景" : variables.field === "characters" ? "人物设定" : variables.field === "conflicts" ? "核心冲突" : "风格指令"}已生成，可继续编辑`);
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const continueChapter = trpc.workspace.continueChapter.useMutation({
     onSuccess: value => {
@@ -629,14 +643,14 @@ function ProjectWorkspace({
       utils.workspace.get.invalidate({ projectId: project.id });
       toast.success("下一章已生成，请先审核再保存");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const saveDocs = trpc.workspace.saveDocs.useMutation({
     onSuccess: () => {
       utils.workspace.get.invalidate({ projectId: project.id });
       toast.success("策划文档已保存");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const [docs, setDocs] = useState({
     ...emptyDocs,
@@ -669,7 +683,7 @@ function ProjectWorkspace({
       versions.refetch();
       toast.success("版本已持久化回滚");
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(getMutationErrorMessage(error)),
   });
   const exportText = () => {
     const text = `${project.title}\n\n${project.synopsis}\n\n【全书大纲】\n${outline}\n\n${chapters.map((c: any) => `第${c.chapterNumber}章 ${c.title}\n\n${c.body}`).join("\n\n")}`;

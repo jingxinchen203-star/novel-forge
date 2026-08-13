@@ -60,6 +60,10 @@ describe("sidebar navigation", () => {
     expect(homeSource).toContain("readNavTarget(currentHash())");
     expect(homeSource).toContain("targetToWorkspaceTab");
     expect(homeSource).toContain('value={activeTab} onValueChange={setActiveTab}');
+    expect(layoutSource).toContain("登录验证未完成或会话已失效");
+    expect(layoutSource).toContain("重新登录");
+    expect(homeSource).toContain("AI 暂时无法生成，请稍后重试");
+    expect(homeSource).toContain("当前项目正在生成或请求过于频繁");
     for (const tab of ["trends", "versions", "schedule"]) expect(homeSource).toContain(`value="${tab}"`);
   });
 });
