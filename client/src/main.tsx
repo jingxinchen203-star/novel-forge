@@ -18,6 +18,11 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  try {
+    window.localStorage.setItem("novel-forge:return-to", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+  } catch {
+    // Blocked storage should not prevent the login redirect.
+  }
   startLogin();
 };
 

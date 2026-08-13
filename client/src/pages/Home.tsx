@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import {
   BookOpen,
   ChevronRight,
@@ -41,6 +42,7 @@ import { GenrePicker } from "@/components/GenrePicker";
 import { SynopsisFields } from "@/components/SynopsisFields";
 import { canSaveProject } from "@shared/projectValidation";
 import { buildProjectCreateInput } from "@shared/projectForm";
+import { countWritingUnits, writingGoalProgress } from "@shared/writingStats";
 import {
   canGenerateOutline,
   normalizeStoryDirection,
@@ -59,6 +61,28 @@ const emptyDocs = {
   conflicts: "",
   styleGuide: "克制、细腻、具有连续追读钩子的中文网文叙事。",
 };
+
+function writingDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readWritingPreference(key: string, fallback: number) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const value = Number(window.localStorage.getItem(key));
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeWritingPreference(key: string, value: number) {
+  try {
+    window.localStorage.setItem(key, String(Math.max(0, Math.round(value))));
+  } catch {
+    // Blocked storage should not prevent writing.
+  }
+}
 
 function getMutationErrorMessage(error: { message?: string }) {
   const message = error.message ?? "";
@@ -646,6 +670,16 @@ function ProjectWorkspace({
     heat: 70,
     note: "",
   });
+  const [assistantMode, setAssistantMode] = useState<"polish" | "names" | "ideas">("polish");
+  const [assistantText, setAssistantText] = useState("");
+  const [assistantResult, setAssistantResult] = useState("");
+  const assistWriting = trpc.workspace.assistWriting.useMutation({
+    onSuccess: value => {
+      setAssistantResult(value);
+      toast.success(assistantMode === "polish" ? "润色建议已生成，请审核后采用" : "AI 建议已生成");
+    },
+    onError: error => toast.error(getMutationErrorMessage(error)),
+  });
   const saveChapter = trpc.workspace.saveChapter.useMutation({
     onSuccess: () => {
       utils.workspace.get.invalidate({ projectId: project.id });
@@ -705,6 +739,25 @@ function ProjectWorkspace({
   }, [workspace?.docs]);
   const chapters = workspace?.chapters ?? [];
   const current = activeChapter ?? chapters[0];
+  const currentChapterWords = countWritingUnits(current?.body);
+  const [dailyGoal, setDailyGoal] = useState(() => readWritingPreference(`novel-forge:daily-goal:${project.id}`, 1000));
+  const [dailyBaseline, setDailyBaseline] = useState(wordCount);
+  useEffect(() => {
+    setDailyGoal(readWritingPreference(`novel-forge:daily-goal:${project.id}`, 1000));
+  }, [project.id]);
+  useEffect(() => {
+    if (!workspace?.data) return;
+    const key = `novel-forge:daily-baseline:${project.id}:${writingDayKey()}`;
+    const stored = readWritingPreference(key, -1);
+    if (stored < 0) {
+      writeWritingPreference(key, wordCount);
+      setDailyBaseline(wordCount);
+    } else {
+      setDailyBaseline(stored);
+    }
+  }, [project.id, workspace?.data, wordCount]);
+  const dailyWritten = Math.max(0, wordCount - dailyBaseline);
+  const dailyProgress = writingGoalProgress(dailyWritten, dailyGoal);
   const versionEntityType = current
     ? ("chapter" as const)
     : ("outline" as const);
@@ -1070,6 +1123,21 @@ function ProjectWorkspace({
                 <p className="text-sm leading-6 text-muted-foreground">手机端可横向切换章节；正文区域使用较大字号，适合连续阅读和修改。</p>
               </CardHeader>
               <CardContent>
+                <div className="mb-5 grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3">
+                  <div className="bg-card p-3"><p className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">当前章节</p><p className="mt-2 font-display text-2xl">{currentChapterWords.toLocaleString()} <span className="font-sans text-xs text-muted-foreground">字</span></p></div>
+                  <div className="bg-card p-3"><p className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">全书总字数</p><p className="mt-2 font-display text-2xl">{wordCount.toLocaleString()} <span className="font-sans text-xs text-muted-foreground">字</span></p></div>
+                  <label className="col-span-2 bg-card p-3 sm:col-span-1"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">每日目标</span><Input aria-label="每日写作目标" type="number" min={1} step={100} className="mt-2 h-9 rounded-none" value={dailyGoal} onChange={event => { const value = Math.max(1, Number(event.target.value) || 1); setDailyGoal(value); writeWritingPreference(`novel-forge:daily-goal:${project.id}`, value); }} /></label>
+                </div>
+                <div className="mb-5 rounded-none border border-border bg-card p-3"><div className="mb-2 flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">今日写作目标（按今日新增字数）</span><strong>{dailyWritten.toLocaleString()} / {dailyGoal.toLocaleString()} 字</strong></div><Progress value={dailyProgress} aria-label={`每日写作目标完成 ${dailyProgress}%`} /><p className="mt-2 text-[11px] text-muted-foreground">完成度 {dailyProgress}% · 保存正文后会更新今日新增字数；首次打开项目时会建立当天基线。</p></div>
+                <Card className="mb-5 rounded-none border-accent/40 bg-accent/5">
+                  <CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="font-display text-xl">AI 写作助手</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">AI 只提供建议；润色结果不会自动覆盖正文。</p></div><Sparkles className="h-5 w-5 text-accent" /></div></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">{([['polish', '一键润色'], ['names', '角色名字'], ['ideas', '剧情灵感']] as const).map(([mode, label]) => <Button key={mode} type="button" variant={assistantMode === mode ? "default" : "outline"} className="min-h-10 rounded-none px-2 text-xs" onClick={() => { setAssistantMode(mode); setAssistantResult(""); }}>{label}</Button>)}</div>
+                    <Textarea className="min-h-28 text-[16px] leading-7" value={assistantText} onChange={event => setAssistantText(event.target.value)} placeholder={assistantMode === "polish" ? "粘贴或输入想要润色的正文；留空则使用当前章节正文。" : assistantMode === "names" ? "输入角色设定，例如：冷静、擅长机关术的女主。" : "输入剧情方向或冲突；留空则参考当前章节和大纲。"} />
+                    <Button type="button" className="min-h-11 rounded-none" disabled={assistWriting.isPending} onClick={() => assistWriting.mutate({ projectId: project.id, chapterId: current?.id, mode: assistantMode, text: assistantText.trim() || current?.body || docs.characters || outline || "请基于当前项目提供建议", context: `${current?.outline ?? ""}\n${outline}\n${docs.characters}\n${docs.conflicts}` })}>{assistWriting.isPending ? "生成中…" : assistantMode === "polish" ? "生成润色建议" : assistantMode === "names" ? "生成角色名字" : "生成剧情灵感"}</Button>
+                    {assistantResult && <div className="space-y-3"><Textarea aria-label="AI 建议结果" className="min-h-36 text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} />{assistantMode === "polish" && <Button type="button" variant="outline" className="min-h-10 rounded-none" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}>采用润色结果</Button>}</div>}
+                  </CardContent>
+                </Card>
                 <div className="grid gap-3 md:grid-cols-2 mb-4">
                   <Input
                     placeholder="章节标题"

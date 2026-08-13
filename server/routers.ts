@@ -183,6 +183,22 @@ export const appRouter = router({
         ]);
       } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
     }),
+    assistWriting: protectedProcedure.input(z.object({ projectId: z.number(), chapterId: z.number().optional(), mode: z.enum(["polish", "names", "ideas"]), text: z.string().trim().min(1).max(TEXT_LIMITS.chapterBody), context: z.string().max(TEXT_LIMITS.document).default("") })).mutation(async ({ ctx, input }) => {
+      const project = await requireProject(ctx.user.id, input.projectId);
+      if (input.chapterId) await requireChapter(ctx.user.id, input.projectId, input.chapterId);
+      if (!(await reserveGenerationSlot(ctx.user.id, input.projectId))) throw new Error("生成请求过于频繁或项目正在生成");
+      const instructions = {
+        polish: "润色以下中文网文正文：保留事实、人物关系、叙事视角和情节顺序，改善句式、节奏、画面感与移动端段落可读性。只输出润色后的正文，不要解释。",
+        names: "根据题材和角色信息生成 8 个中文角色名字候选。每个候选包含名字、气质关键词和一句命名理由。不要替换已有角色设定。",
+        ideas: "根据当前章节和上下文提供 5 个可执行的剧情灵感。每个灵感包含推进事件、冲突升级和章末钩子。只提供建议，不要替作者决定。",
+      } as const;
+      try {
+        return await textFromLLM([
+          { role: "system", content: `你是中文网络文学编辑助手。${instructions[input.mode]} 输出应简洁、具体、尊重作者已有设定。` },
+          { role: "user", content: `项目：${project.title}\n题材：${project.genre}\n简介：${project.synopsis}\n上下文：${input.context}\n当前内容：${input.text}` },
+        ]);
+      } finally { await releasePersistentGenerationLock(ctx.user.id, input.projectId); }
+    }),
     continueChapter: protectedProcedure.input(z.object({ projectId: z.number(), previousChapterId: z.number().optional(), targetWords: z.number().int().min(500).max(20000).default(3000), style: z.string().max(TEXT_LIMITS.style).default("") })).mutation(async ({ ctx, input }) => {
       const project = await requireProject(ctx.user.id, input.projectId); const db = await getDb(); if (!db) throw new Error("数据库不可用");
       const previous = input.previousChapterId ? await requireChapter(ctx.user.id, input.projectId, input.previousChapterId) : (await getChapters(ctx.user.id, input.projectId)).at(-1);
