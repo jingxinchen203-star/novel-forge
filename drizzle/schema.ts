@@ -38,6 +38,19 @@ export const trendTags = mysqlTable("trend_tags", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({ userIdx: index("trend_tags_user_idx").on(table.userId) }));
 
+export const trendRefreshRuns = mysqlTable("trend_refresh_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  taskUid: varchar("taskUid", { length: 65 }),
+  trigger: varchar("trigger", { length: 24 }).notNull(),
+  status: varchar("status", { length: 24 }).notNull(),
+  itemCount: int("itemCount").default(0).notNull(),
+  error: text("error"),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  finishedAt: timestamp("finishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({ userIdx: index("trend_refresh_runs_user_idx").on(table.userId), taskIdx: index("trend_refresh_runs_task_idx").on(table.taskUid) }));
+
 export const projectDocs = mysqlTable("project_docs", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),

@@ -7,7 +7,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router, securePublicMutation } from "./_core/trpc";
 import { and, desc, eq } from "drizzle-orm";
-import { getDb, getProject, getProjectDocs, getProjects, getChapters, getTrends, getNotifications, chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, writingSchedules } from "./db";
+import { getDb, getProject, getProjectDocs, getProjects, getChapters, getTrends, getTrendRefreshRuns, getNotifications, chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, trendRefreshRuns, writingSchedules } from "./db";
 import { buildOhStorySystemPrompt, OH_STORY_METHOD } from "@shared/ohStoryMethod";
 import { releasePersistentGenerationLock, reserveGenerationSlot, TEXT_LIMITS } from "./_core/security";
 
@@ -130,11 +130,18 @@ export const appRouter = router({
   }),
   trends: router({
     list: protectedProcedure.query(({ ctx }) => getTrends(ctx.user.id)),
+    runs: protectedProcedure.query(({ ctx }) => getTrendRefreshRuns(ctx.user.id)),
     refresh: protectedProcedure.mutation(async ({ ctx }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
+      const startedAt = new Date();
+      const runInsert = await db.insert(trendRefreshRuns).values({ userId: ctx.user.id, trigger: "manual", status: "running", startedAt });
+      const runId = Number((runInsert as any)[0]?.insertId ?? 0);
       const existing = await getTrends(ctx.user.id);
       const latestAutomated = existing.filter(item => item.automated === 1 && item.collectedAt).sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime())[0];
-      if (latestAutomated && Date.now() - new Date(latestAutomated.collectedAt).getTime() < 10 * 60 * 1000) throw new Error("趋势研究刚刚更新，请稍后再试");
+      if (latestAutomated && Date.now() - new Date(latestAutomated.collectedAt).getTime() < 10 * 60 * 1000) {
+        if (runId) await db.update(trendRefreshRuns).set({ status: "rejected", error: "cooldown", finishedAt: new Date() }).where(eq(trendRefreshRuns.id, runId));
+        throw new Error("趋势研究刚刚更新，请稍后再试");
+      }
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "你是中文网络文学市场研究编辑。只输出 JSON，不要编造实时榜单或销量，不要虚构来源 URL。基于可验证的一般题材观察，生成最多 12 条适合中文网文创作参考的趋势标签。每条包含 label、category、heat（0-100）、note、source。明确这是研究参考，不是实时平台榜单。" },
@@ -157,9 +164,13 @@ export const appRouter = router({
         collectedAt: new Date(),
         automated: 1,
       })).filter(item => item.label && item.note);
-      if (!items.length) throw new Error("没有得到可用的趋势记录");
+      if (!items.length) {
+        if (runId) await db.update(trendRefreshRuns).set({ status: "failed", error: "empty_result", finishedAt: new Date() }).where(eq(trendRefreshRuns.id, runId));
+        throw new Error("没有得到可用的趋势记录");
+      }
       await db.delete(trendTags).where(and(eq(trendTags.userId, ctx.user.id), eq(trendTags.automated, 1)));
       await db.insert(trendTags).values(items);
+      if (runId) await db.update(trendRefreshRuns).set({ status: "succeeded", itemCount: items.length, finishedAt: new Date() }).where(eq(trendRefreshRuns.id, runId));
       return getTrends(ctx.user.id);
     }),
     create: protectedProcedure.input(z.object({ label: z.string().trim().min(1).max(80), category: z.string().trim().min(1).max(80), heat: z.number().int().min(0).max(100), note: z.string().max(20000).default("") })).mutation(async ({ ctx, input }) => {

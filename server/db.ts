@@ -8,6 +8,7 @@ import {
   notifications,
   projectDocs,
   trendTags,
+  trendRefreshRuns,
   writingSchedules,
   generationUsage,
   users,
@@ -78,9 +79,14 @@ export async function getTrends(userId: number) {
   return db ? db.select().from(trendTags).where(eq(trendTags.userId, userId)).orderBy(desc(trendTags.heat)) : [];
 }
 
+export async function getTrendRefreshRuns(userId: number) {
+  const db = await getDb();
+  return db ? db.select().from(trendRefreshRuns).where(eq(trendRefreshRuns.userId, userId)).orderBy(desc(trendRefreshRuns.startedAt)).limit(20) : [];
+}
+
 export async function getNotifications(userId: number) {
   const db = await getDb();
   return db ? db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(30) : [];
 }
 
-export { chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, writingSchedules };
+export { chapters, contentVersions, generationUsage, novelProjects, notifications, projectDocs, trendTags, trendRefreshRuns, writingSchedules };
