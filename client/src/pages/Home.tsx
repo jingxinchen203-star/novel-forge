@@ -20,6 +20,9 @@ import {
   Sparkles,
   Trash2,
   Wand2,
+  Check,
+  Copy,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -1101,7 +1104,8 @@ function ProjectWorkspace({
                     setActiveChapter(chapter);
                     window.setTimeout(() => document.getElementById("novel-forge-chapter-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
                   }}
-                  className={`min-w-[150px] shrink-0 border p-3 text-left lg:w-full ${current?.id === chapter.id ? "bg-foreground text-background" : "bg-card"}`}
+                  aria-label={`打开第${chapter.chapterNumber}章`}
+                  className={`min-w-[150px] shrink-0 border p-3 text-left transition-colors lg:w-full ${current?.id === chapter.id ? "bg-foreground text-background" : "bg-card hover:bg-accent/10"}`}
                 >
                   <p className="text-[10px] uppercase tracking-[.2em] opacity-60">
                     Chapter {String(chapter.chapterNumber).padStart(2, "0")}
@@ -1135,7 +1139,7 @@ function ProjectWorkspace({
                     <div className="grid grid-cols-3 gap-2">{([['polish', '一键润色'], ['names', '角色名字'], ['ideas', '剧情灵感']] as const).map(([mode, label]) => <Button key={mode} type="button" variant={assistantMode === mode ? "default" : "outline"} className="min-h-10 rounded-none px-2 text-xs" onClick={() => { setAssistantMode(mode); setAssistantResult(""); }}>{label}</Button>)}</div>
                     <Textarea className="min-h-28 text-[16px] leading-7" value={assistantText} onChange={event => setAssistantText(event.target.value)} placeholder={assistantMode === "polish" ? "粘贴或输入想要润色的正文；留空则使用当前章节正文。" : assistantMode === "names" ? "输入角色设定，例如：冷静、擅长机关术的女主。" : "输入剧情方向或冲突；留空则参考当前章节和大纲。"} />
                     <Button type="button" className="min-h-11 rounded-none" disabled={assistWriting.isPending} onClick={() => assistWriting.mutate({ projectId: project.id, chapterId: current?.id, mode: assistantMode, text: assistantText.trim() || current?.body || docs.characters || outline || "请基于当前项目提供建议", context: `${current?.outline ?? ""}\n${outline}\n${docs.characters}\n${docs.conflicts}` })}>{assistWriting.isPending ? "生成中…" : assistantMode === "polish" ? "生成润色建议" : assistantMode === "names" ? "生成角色名字" : "生成剧情灵感"}</Button>
-                    {assistantResult && <div className="space-y-3"><Textarea aria-label="AI 建议结果" className="min-h-36 text-[16px] leading-7" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} />{assistantMode === "polish" && <Button type="button" variant="outline" className="min-h-10 rounded-none" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}>采用润色结果</Button>}</div>}
+                    {assistantResult && <div className="space-y-3 rounded-none border border-border bg-background/60 p-3"><div className="flex items-center justify-between gap-3"><span className="text-[10px] uppercase tracking-[.16em] text-muted-foreground">AI 建议 / 待审核</span><Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="丢弃 AI 建议" onClick={() => setAssistantResult("")}><X className="h-4 w-4" /></Button></div><Textarea aria-label="AI 建议结果" className="min-h-36 border-0 bg-transparent p-0 text-[16px] leading-7 shadow-none focus-visible:ring-0" value={assistantResult} onChange={event => setAssistantResult(event.target.value)} /><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { void navigator.clipboard?.writeText(assistantResult); toast.success("建议已复制"); }}><Copy className="mr-2 h-3.5 w-3.5" />复制建议</Button>{assistantMode === "polish" && <Button type="button" variant="outline" className="min-h-10 rounded-none text-xs" onClick={() => { setActiveChapter({ ...(current ?? {}), body: assistantResult }); toast.success("润色结果已回填，请保存正文"); }}><Check className="mr-2 h-3.5 w-3.5" />采用润色结果</Button>}</div></div>}
                   </CardContent>
                 </Card>
                 <div className="grid gap-3 md:grid-cols-2 mb-4">
