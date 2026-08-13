@@ -1,6 +1,6 @@
 # Novel Forge — Release Notes
 
-**版本标识：** `v1.0.0`（发布目标提交将在 Release 创建前确定）
+**版本标识：** `v1.0.0`，目标提交 `79f854fc5abbeecec52533ecfa7ca9a65130ec6e`
 **发布日期：** 2026-08-13  
 **仓库：** [jingxinchen203-star/novel-forge](https://github.com/jingxinchen203-star/novel-forge)  
 **部署域名：** [novelforge-gytesvpi.manus.space](https://novelforge-gytesvpi.manus.space)
