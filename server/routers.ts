@@ -133,6 +133,8 @@ export const appRouter = router({
     refresh: protectedProcedure.mutation(async ({ ctx }) => {
       const db = await getDb(); if (!db) throw new Error("数据库不可用");
       const existing = await getTrends(ctx.user.id);
+      const latestAutomated = existing.filter(item => item.automated === 1 && item.collectedAt).sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime())[0];
+      if (latestAutomated && Date.now() - new Date(latestAutomated.collectedAt).getTime() < 10 * 60 * 1000) throw new Error("趋势研究刚刚更新，请稍后再试");
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "你是中文网络文学市场研究编辑。只输出 JSON，不要编造实时榜单或销量，不要虚构来源 URL。基于可验证的一般题材观察，生成最多 12 条适合中文网文创作参考的趋势标签。每条包含 label、category、heat（0-100）、note、source。明确这是研究参考，不是实时平台榜单。" },

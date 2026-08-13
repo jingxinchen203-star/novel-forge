@@ -17,6 +17,25 @@ const TRIM_TARGET_BYTES = Math.floor(MAX_LOG_SIZE_BYTES * 0.6); // Trim to 60% t
 
 type LogSource = "browserConsole" | "networkRequests" | "sessionReplay";
 
+const SENSITIVE_KEYS = /authorization|cookie|set-cookie|token|secret|api[-_]?key|password/i;
+
+export function sanitizeDebugPayload(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeDebugPayload);
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(record).map(([key, entry]) => {
+    if (SENSITIVE_KEYS.test(key)) return [key, "[REDACTED]"];
+    if (key === "url" && typeof entry === "string") {
+      try {
+        const url = new URL(entry, "http://localhost");
+        for (const queryKey of Array.from(url.searchParams.keys())) if (SENSITIVE_KEYS.test(queryKey)) url.searchParams.set(queryKey, "[REDACTED]");
+        return [key, url.toString().replace("http://localhost", "")];
+      } catch { return [key, entry]; }
+    }
+    return [key, sanitizeDebugPayload(entry)];
+  }));
+}
+
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -106,13 +125,13 @@ function vitePluginManusDebugCollector(): Plugin {
         const handlePayload = (payload: any) => {
           // Write logs directly to files
           if (payload.consoleLogs?.length > 0) {
-            writeToLogFile("browserConsole", payload.consoleLogs);
+            writeToLogFile("browserConsole", sanitizeDebugPayload(payload.consoleLogs) as unknown[]);
           }
           if (payload.networkRequests?.length > 0) {
-            writeToLogFile("networkRequests", payload.networkRequests);
+            writeToLogFile("networkRequests", sanitizeDebugPayload(payload.networkRequests) as unknown[]);
           }
           if (payload.sessionEvents?.length > 0) {
-            writeToLogFile("sessionReplay", payload.sessionEvents);
+            writeToLogFile("sessionReplay", sanitizeDebugPayload(payload.sessionEvents) as unknown[]);
           }
 
           res.writeHead(200, { "Content-Type": "application/json" });
