@@ -458,7 +458,7 @@
 
 # Cloudflare 部署适配
 
-- [ ] 审查现有 GitHub Actions、构建入口和 Cloudflare 适配边界
-- [ ] 增加 Cloudflare Pages/Workers 部署配置与说明
-- [ ] 验证构建产物、静态资源和 SPA 路由回退
-- [ ] 提交 GitHub 变更并说明 DNS、Secrets 与数据库限制
+- [x] 审查现有 GitHub Actions、构建入口和 Cloudflare 适配边界
+- [x] 增加 Cloudflare Pages/Workers 部署配置与说明
+- [x] 验证构建产物、静态资源和 SPA 路由回退
+- [x] 提交 GitHub 变更并说明 DNS、Secrets 与数据库限制
