@@ -462,3 +462,10 @@
 - [x] 增加 Cloudflare Pages/Workers 部署配置与说明
 - [x] 验证构建产物、静态资源和 SPA 路由回退
 - [x] 提交 GitHub 变更并说明 DNS、Secrets 与数据库限制
+
+# Cloudflare 域名接入
+
+- [x] 核对 novel-forge-cxf.pages.dev 与现有 CORS/OAuth/API 配置
+- [x] 更新允许来源、OAuth 回调和前端 API 地址配置
+- [x] 补充 Cloudflare GitHub Secrets 的逐项小白说明
+- [ ] 完成类型检查、测试、构建和 GitHub 同步

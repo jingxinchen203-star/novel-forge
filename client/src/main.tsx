@@ -8,6 +8,8 @@ import App from "./App";
 import "./index.css";
 
 const queryClient = new QueryClient();
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "");
+const apiBaseUrl = configuredApiBaseUrl || (window.location.hostname.endsWith("pages.dev") ? "https://novelforge-gytesvpi.manus.space" : window.location.origin);
 
 // Authentication errors are rendered by the current page's auth boundary.
 // Do not redirect from the global query cache: on production hosts a cookie can
@@ -28,7 +30,7 @@ queryClient.getMutationCache().subscribe(event => {
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: `${apiBaseUrl}/api/trpc`,
       transformer: superjson,
       headers() {
         // Preview auto-login fallback: when the browser blocks iframe cookies

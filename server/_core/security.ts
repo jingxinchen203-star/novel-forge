@@ -1,5 +1,6 @@
 import type { Request } from "express";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { ENV } from "./env";
 import { getDb, generationUsage } from "../db";
 
 export const TEXT_LIMITS = {
@@ -15,12 +16,23 @@ const WINDOW_MS = 60_000;
 const LOCK_MS = 2 * 60_000;
 const MAX_GENERATIONS_PER_MINUTE = 3;
 
+export function isAllowedOrigin(origin: string | undefined) {
+  if (!origin) return false;
+  try {
+    const normalized = new URL(origin).origin;
+    return ENV.allowedOrigins.includes(normalized);
+  } catch {
+    return false;
+  }
+}
+
 export function hasTrustedMutationOrigin(req: Request) {
   const origin = req.headers.origin;
   const host = req.headers.host;
   if (!origin || !host) return false;
   try {
-    return new URL(origin).host === host;
+    const originHost = new URL(origin).host;
+    return originHost === host || isAllowedOrigin(origin);
   } catch {
     return false;
   }

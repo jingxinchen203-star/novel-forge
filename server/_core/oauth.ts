@@ -1,16 +1,42 @@
-import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState, encodeOAuthState } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
+import { isAllowedOrigin } from "./security";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
   return typeof value === "string" ? value : undefined;
 }
 
+function safeReturnTo(value: string | undefined) {
+  if (!value) return ENV.publicAppUrl;
+  try {
+    const url = new URL(value);
+    return isAllowedOrigin(url.origin) ? url.toString() : ENV.publicAppUrl;
+  } catch {
+    return ENV.publicAppUrl;
+  }
+}
+
 export function registerOAuthRoutes(app: Express) {
+  app.get("/api/oauth/start", (req: Request, res: Response) => {
+    const returnTo = safeReturnTo(getQueryParam(req, "returnTo"));
+    const callbackUri = `${req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http"}://${req.get("host")}/api/oauth/callback`;
+    const nonce = crypto.randomUUID();
+    const state = encodeOAuthState({ redirectUri: callbackUri, nonce, returnTo });
+    res.cookie(OAUTH_STATE_COOKIE, nonce, { path: "/", maxAge: 10 * 60 * 1000, secure: callbackUri.startsWith("https://"), sameSite: "none" });
+    const url = new URL(`${ENV.oAuthServerUrl}/app-auth`);
+    url.searchParams.set("appId", ENV.appId);
+    url.searchParams.set("redirectUri", callbackUri);
+    url.searchParams.set("state", state);
+    url.searchParams.set("type", "signIn");
+    res.redirect(302, url.toString());
+  });
+
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
@@ -56,7 +82,7 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      res.redirect(302, safeReturnTo(decodeOAuthState(state).returnTo));
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
