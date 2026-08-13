@@ -187,6 +187,13 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        // Keep browser entry/chunk URLs stable across deploys. The hosting edge
+        // can cache index.html and an old hashed URL independently; when that
+        // happens a missing JS URL falls through to index.html and React never
+        // mounts. Stable names prevent this production-only blank-page failure.
+        entryFileNames: "assets/[name].js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@radix-ui") || id.includes("@tanstack") || id.includes("@trpc") || id.includes("lucide-react")) return "ui-vendor";
