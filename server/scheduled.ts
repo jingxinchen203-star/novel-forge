@@ -34,7 +34,12 @@ type TrendRefreshItem = {
 
 export async function runScheduledTrendRefresh(req: Request, res: Response) {
   try {
-    const user = await sdk.authenticateRequest(req);
+    let user;
+    try {
+      user = await sdk.authenticateRequest(req);
+    } catch {
+      return res.status(403).json({ error: "cron-only" });
+    }
     if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
     const body = req.body as { items?: TrendRefreshItem[] } | undefined;
     const items = Array.isArray(body?.items) ? body.items.slice(0, 40) : [];

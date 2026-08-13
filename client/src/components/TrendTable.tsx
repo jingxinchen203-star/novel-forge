@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PUBLIC_TREND_OBSERVATIONS, type TrendConfidence, type TrendPlatform } from "@shared/multiPlatformTrends";
 
-export type UserTrend = { id: number; label: string; category: string; heat: number; note?: string };
+export type UserTrend = { id: number; label: string; category: string; heat: number; note?: string; source?: string; collectedAt?: string | Date; automated?: number };
 export type TrendRow = {
   id: string;
   platform: TrendPlatform;
@@ -17,6 +17,7 @@ export type TrendRow = {
   confidence: TrendConfidence | "用户";
   collectedAt: string;
   sourceUrl?: string;
+  source?: string;
   note: string;
   isUser?: boolean;
 };
@@ -62,8 +63,10 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
       metricLabel: "用户热度",
       metricValue: item.heat,
       confidence: "用户",
-      collectedAt: "—",
       note: item.note || "暂无备注",
+      sourceUrl: item.source && item.source.startsWith("http") ? item.source : undefined,
+      source: item.source ?? "本地",
+      collectedAt: item.collectedAt ? new Date(item.collectedAt).toLocaleDateString("zh-CN") : "—",
       isUser: true,
     }));
     return [...publicRows, ...userRows];
@@ -92,7 +95,7 @@ export function TrendTable({ trends, onEdit, onDelete }: { trends: UserTrend[]; 
           <TableCell className="whitespace-nowrap text-xs">{formatMetric(row.metricValue, row.metricLabel)}</TableCell>
           <TableCell><span className={`text-xs ${row.confidence === "高" ? "text-emerald-700" : row.confidence === "低" ? "text-amber-700" : "text-muted-foreground"}`}>{row.confidence}</span></TableCell>
           <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.collectedAt}</TableCell>
-          <TableCell className="text-right"><div className="flex flex-col items-end gap-2">{row.sourceUrl ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline underline-offset-4">查看 <ExternalLink className="h-3 w-3" /></a> : <span className="text-xs text-muted-foreground">本地</span>}{row.isUser && <span className="flex gap-2 text-xs"><button type="button" onClick={() => onEdit?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note })} className="underline underline-offset-4">编辑</button><button type="button" onClick={() => onDelete?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note })} className="text-destructive underline underline-offset-4">删除</button></span>}</div></TableCell>
+          <TableCell className="text-right"><div className="flex flex-col items-end gap-2">{row.sourceUrl ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline underline-offset-4">查看 <ExternalLink className="h-3 w-3" /></a> : <span className="text-xs text-muted-foreground">{row.source ?? "本地"}</span>}{row.isUser && <span className="flex gap-2 text-xs"><button type="button" onClick={() => onEdit?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note, source: row.source, collectedAt: row.collectedAt })} className="underline underline-offset-4">编辑</button><button type="button" onClick={() => onDelete?.(trends.find(item => `user-${item.id}` === row.id) ?? { id: Number(row.id.replace("user-", "")), label: row.title, category: row.genre, heat: row.metricValue ?? 0, note: row.note, source: row.source, collectedAt: row.collectedAt })} className="text-destructive underline underline-offset-4">删除</button></span>}</div></TableCell>
         </TableRow>)}{filtered.length === 0 && <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">没有符合当前筛选条件的趋势观察。</TableCell></TableRow>}</TableBody>
       </Table>
     </div>
