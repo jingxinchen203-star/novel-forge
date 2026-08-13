@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { currentHash, readNavTarget, targetAnchor, targetToWorkspaceTab } from "../client/src/lib/navigation";
+import { currentHash, currentProjectId, projectNavigationUrl, readNavTarget, resolveProjectSelection, targetAnchor, targetToWorkspaceTab } from "../client/src/lib/navigation";
 
 const layoutSource = readFileSync(resolve(process.cwd(), "client/src/components/DashboardLayout.tsx"), "utf8");
 const homeSource = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
@@ -14,6 +14,20 @@ describe("sidebar navigation", () => {
     expect(readNavTarget("#unknown")).toBe("overview");
     expect(readNavTarget("")).toBe("overview");
     expect(currentHash()).toBe("");
+  });
+
+  it("parses project deep links and preserves existing query parameters", () => {
+    const previousWindow = (globalThis as any).window;
+    (globalThis as any).window = { location: { search: "?from_webdev=1&project=42", href: "https://novel.test/?from_webdev=1&project=42#workspace", hash: "#workspace" } };
+    expect(currentProjectId()).toBe(42);
+    expect(projectNavigationUrl(7)).toBe("/?from_webdev=1&project=7#workspace");
+    (globalThis as any).window = previousWindow;
+  });
+
+  it("falls back safely for invalid or deleted project links", () => {
+    expect(resolveProjectSelection([3, 7], 7)).toBe(7);
+    expect(resolveProjectSelection([3, 7], 999)).toBe(3);
+    expect(resolveProjectSelection([], 999)).toBeNull();
   });
 
   it("maps feature targets to the matching workspace tabs and anchors", () => {
