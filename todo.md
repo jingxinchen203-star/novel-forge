@@ -476,3 +476,11 @@
 - [x] 定位 GitHub 导入后的构建命令或输出目录问题
 - [x] 修正仓库部署配置并验证 Pages 产物
 - [x] 给出 Cloudflare 面板中可直接照做的设置
+
+# Cloudflare Pages 实际部署验证
+
+- [ ] 检查最新 GitHub 提交和 Cloudflare 构建配置
+- [ ] 确认 Pages 项目使用 `pnpm build:cloudflare` 与 `dist`
+- [ ] 验证 novel-forge-cxf.pages.dev 访问和静态资源
+- [ ] 修复 Cloudflare Pages 预览页 React 首屏为空白的问题，并移除 `_redirects` 中导致无限循环警告的规则
+- [ ] 重新部署 Cloudflare Pages 并验证首页、静态资源、后端 API 与 OAuth 起始入口
