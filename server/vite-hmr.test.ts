@@ -16,4 +16,10 @@ describe("Vite HMR proxy configuration", () => {
     expect(source).toContain("clientPort: 443");
     expect(source).toContain("instead of localhost:5173");
   });
+
+  it("keeps React and react-dom in one vendor chunk", () => {
+    const source = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
+    expect(source).toContain('id.includes("react-dom") || id.includes("/react/") || id.includes("/react@")');
+    expect(source).not.toContain('return "react-dom-vendor"');
+  });
 });

@@ -248,3 +248,10 @@
 - [x] 复现并定位正式域名 React 根节点为空的生产启动原因（平台继承 NODE_ENV=development，发布 bundle 使用 jsxDEV）
 - [x] 修复生产前端启动或资源加载问题（build script 显式设置 NODE_ENV=production，并移除生产中的 jsx loc 调试插件）
 - [x] 完成本地生产构建、公开域名验证并保存发布检查点（生产 bundle jsxDEV=0、debugCollector=0；19 个测试文件、55 个测试通过）
+
+# 全量对抗性审查
+
+- [x] 复核历史导航、趋势库、深链接和空白页问题（发现并修复 React/react-dom vendor 循环依赖）
+- [x] 复核 CSRF、权限归属、输入边界、配额并发和定时任务安全性（未发现新增越权路径）
+- [x] 复核生产构建、公开域名、HMR 配置和资源加载（生产 bundle 已修复；公开域名需本轮部署后再次验收）
+- [x] 修复新发现的问题并补充回归测试，输出审查报告（19 个测试文件、56 个测试通过；见 adversarial-audit-round5.md）
