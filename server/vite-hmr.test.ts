@@ -17,6 +17,13 @@ describe("Vite HMR proxy configuration", () => {
     expect(source).toContain("instead of localhost:5173");
   });
 
+  it("preserves public HMR settings in the Express Vite bridge", () => {
+    const source = readFileSync(resolve(process.cwd(), "server/_core/vite.ts"), "utf8");
+    expect(source).toContain("configuredHmr");
+    expect(source).toContain("typeof configuredHmr === \"object\"");
+    expect(source).toContain("server,");
+  });
+
   it("does not manually split React and react-dom into circular vendor chunks", () => {
     const source = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
     expect(source).not.toContain('return "react-vendor"');

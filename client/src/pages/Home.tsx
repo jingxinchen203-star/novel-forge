@@ -193,11 +193,9 @@ export default function Home() {
               <div className="studio-hero__title-wrap">
                 <span className="studio-hero__index">01</span>
                 <h1 className="studio-hero__title">
-                  让故事
-                  <br />
-                  <em>先成形，</em>
-                  <br />
-                  再成为作品。
+                  <span className="studio-hero__title-line">让故事</span>
+                  <span className="studio-hero__title-line studio-hero__title-line--accent">先成形，</span>
+                  <span className="studio-hero__title-line">再成为作品。</span>
                 </h1>
               </div>
               <p className="studio-hero__dek">
