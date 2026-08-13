@@ -242,3 +242,9 @@
 - [x] 检查 Vite server、HMR 配置与开发服务日志，确认 WebSocket 失败原因（HTTPS 代理下客户端错误回连 localhost:5173）
 - [x] 修复开发环境 HMR WebSocket 连接配置并重启服务（WSS + clientPort 443）
 - [x] 完成浏览器控制台、check、test、build 验证并保存检查点（19 个测试文件、54 个测试通过；浏览器重载后无新增控制台输出）
+
+# 正式域名空白页修复
+
+- [x] 复现并定位正式域名 React 根节点为空的生产启动原因（平台继承 NODE_ENV=development，发布 bundle 使用 jsxDEV）
+- [x] 修复生产前端启动或资源加载问题（build script 显式设置 NODE_ENV=production，并移除生产中的 jsx loc 调试插件）
+- [x] 完成本地生产构建、公开域名验证并保存发布检查点（生产 bundle jsxDEV=0、debugCollector=0；19 个测试文件、55 个测试通过）
