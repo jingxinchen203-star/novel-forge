@@ -1,5 +1,8 @@
 # Novel Forge
 
+![Novel Forge project hero](assets/project-hero.png)
+
+
 > 一个面向长篇小说创作的 AI 辅助编辑室：让故事先成形，再成为作品。
 
 Novel Forge 是一个全栈小说创作工作台，围绕“项目—世界观—人物—大纲—章节正文”的创作链路组织工作。它将趋势观察、版本档案和续写计划放到独立页面，同时让主工作台专注于创作与编辑。
